@@ -1,0 +1,336 @@
+---
+title: 'Arithmetic and expression evaluation tools in Cruncher MCP'
+description: 'Reference for add, subtract, multiply, divide, modulo, and evaluate_expression — the six core arithmetic tools available in every Cruncher tier.'
+keywords: ['cruncher', 'arithmetic', 'add', 'subtract', 'multiply', 'divide', 'modulo', 'evaluate_expression', 'mcp']
+---
+
+Cruncher's arithmetic tools form the **minimal tier** — the five basic operations plus `evaluate_expression` are registered in every configuration, regardless of the `CRUNCHER_TOOL_SET` setting. All six run inside an isolated worker thread with a configurable timeout (default 3 seconds) and use integer-scaling arithmetic to eliminate IEEE 754 floating-point drift.
+
+## evaluate_expression
+
+Evaluates a plain-text math expression string and returns the computed result. This is the most flexible tool in Cruncher: a single call can combine arithmetic, built-in functions, constants, and scientific notation.
+
+<ParamField body="expression" type="string" required>
+  A math expression string. Supports operators `+`, `-`, `*`, `/`, `%`, `^`, parentheses, built-in functions, named constants, and scientific notation. No algebraic variables (e.g., `x + 2` is not supported).
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The computed numeric value of the expression.
+</ResponseField>
+
+### Supported operators
+
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| `+` | Addition | `3 + 4` → `7` |
+| `-` | Subtraction | `10 - 3` → `7` |
+| `*` | Multiplication | `6 * 7` → `42` |
+| `/` | Division | `15 / 4` → `3.75` |
+| `%` | Modulo (remainder) | `17 % 5` → `2` |
+| `^` | Exponentiation | `2 ^ 10` → `1024` |
+
+### Built-in functions
+
+| Function | Description | Example | Result |
+|----------|-------------|---------|--------|
+| `sin(x)` | Sine — always radians | `sin(pi / 2)` | `1` |
+| `cos(x)` | Cosine — always radians | `cos(pi)` | `-1` |
+| `tan(x)` | Tangent — always radians | `tan(pi / 4)` | `~1` |
+| `asin(x)` | Arcsine, result in radians | `asin(1)` | `~1.5708` |
+| `acos(x)` | Arccosine, result in radians | `acos(0)` | `~1.5708` |
+| `atan(x)` | Arctangent, result in radians | `atan(1)` | `~0.7854` |
+| `sqrt(x)` | Square root | `sqrt(144)` | `12` |
+| `log10(x)` | Base-10 logarithm | `log10(1000)` | `3` |
+| `ln(x)` | Natural logarithm | `ln(e)` | `1` |
+| `log(x, b)` | Arbitrary-base logarithm | `log(8, 2)` | `3` |
+| `abs(x)` | Absolute value | `abs(-5)` | `5` |
+| `round(x)` | Round to nearest integer | `round(3.7)` | `4` |
+| `floor(x)` | Round down | `floor(3.9)` | `3` |
+| `ceil(x)` | Round up | `ceil(3.1)` | `4` |
+| `min(a, b, ...)` | Minimum of arguments | `min(3, 1, 4)` | `1` |
+| `max(a, b, ...)` | Maximum of arguments | `max(3, 1, 4)` | `4` |
+
+<Note>
+Trig functions inside `evaluate_expression` always use **radians**, regardless of the global angle mode set by `set_angle_mode`. To work in degrees, use the individual `sine`, `cosine`, and `tangent` tools instead.
+</Note>
+
+### Constants in expressions
+
+You can use named constants directly in an expression string. Explicit multiplication is always required — `2pi` is not valid; write `2 * pi`.
+
+| Constant | Value |
+|----------|-------|
+| `pi` | 3.14159265358979... |
+| `e` | 2.71828182845904... |
+| `tau` | 6.28318530717958... (2π) |
+| `phi` | 1.61803398874989... (golden ratio) |
+| `sqrt2` | 1.41421356237309... |
+| `euler_mascheroni` | 0.57721566490153... |
+| `c` | 299792458 (speed of light, m/s) |
+| `g` | 9.80665 (standard gravity, m/s²) |
+| `G` | 6.6743e-11 (gravitational constant) |
+| `h` | 6.62607015e-34 (Planck constant, J·s) |
+| `k` | 1.380649e-23 (Boltzmann constant, J/K) |
+| `R` | 8.314462618 (ideal gas constant, J/mol·K) |
+| `NA` | 6.02214076e23 (Avogadro constant) |
+| `e_charge` | 1.602176634e-19 (elementary charge, C) |
+| `m_e` | 9.1093837015e-31 (electron mass, kg) |
+| `m_p` | 1.67262192369e-27 (proton mass, kg) |
+
+### Examples
+
+<CodeGroup>
+
+```json Basic arithmetic
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "(5 + 3) * 10 / 2" }
+}
+```
+
+```json Trig with constant
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "sin(pi / 6) + sqrt(16)" }
+}
+```
+
+```json Arbitrary-base log
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "log(8, 2)" }
+}
+```
+
+```json Scientific notation
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "1e6 + 2.5e-3" }
+}
+```
+
+```json Physics constant
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "2 * pi * 5" }
+}
+```
+
+</CodeGroup>
+
+Responses:
+
+```json
+{ "result": 40 }
+{ "result": 4.5 }
+{ "result": 3 }
+{ "result": 1000002.5 }
+{ "result": 31.41592653589793 }
+```
+
+### Error cases
+
+```json
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "1 / 0" }
+}
+```
+
+```json
+{
+  "error": {
+    "code": -32000,
+    "message": "Check for division by zero or overflow"
+  }
+}
+```
+
+```json
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "sqrt(-1)" }
+}
+```
+
+```json
+{
+  "error": {
+    "code": -32000,
+    "message": "Check for: sqrt(negative), log(negative/zero), asin/acos out of [-1,1]"
+  }
+}
+```
+
+---
+
+## add
+
+Adds two numbers and returns their sum.
+
+<ParamField body="a" type="number" required>
+  The first operand.
+</ParamField>
+
+<ParamField body="b" type="number" required>
+  The second operand.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The sum a + b.
+</ResponseField>
+
+```json
+{ "tool": "add", "arguments": { "a": 5, "b": 3 } }
+```
+
+```json
+{ "result": 8 }
+```
+
+---
+
+## subtract
+
+Subtracts `b` from `a`.
+
+<ParamField body="a" type="number" required>
+  The minuend.
+</ParamField>
+
+<ParamField body="b" type="number" required>
+  The subtrahend.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The difference a − b.
+</ResponseField>
+
+```json
+{ "tool": "subtract", "arguments": { "a": 10, "b": 4 } }
+```
+
+```json
+{ "result": 6 }
+```
+
+---
+
+## multiply
+
+Multiplies two numbers.
+
+<ParamField body="a" type="number" required>
+  The first factor.
+</ParamField>
+
+<ParamField body="b" type="number" required>
+  The second factor.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The product a × b.
+</ResponseField>
+
+```json
+{ "tool": "multiply", "arguments": { "a": 6, "b": 7 } }
+```
+
+```json
+{ "result": 42 }
+```
+
+---
+
+## divide
+
+Divides `a` by `b`.
+
+<ParamField body="a" type="number" required>
+  The dividend.
+</ParamField>
+
+<ParamField body="b" type="number" required>
+  The divisor. Must not be zero.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The quotient a ÷ b.
+</ResponseField>
+
+<Warning>
+Passing `b = 0` returns a `-32000` execution error: "Check for division by zero or overflow". Always validate the divisor before calling this tool.
+</Warning>
+
+<CodeGroup>
+
+```json Successful division
+{
+  "tool": "divide",
+  "arguments": { "a": 15, "b": 4 }
+}
+```
+
+```json Division by zero
+{
+  "tool": "divide",
+  "arguments": { "a": 10, "b": 0 }
+}
+```
+
+</CodeGroup>
+
+```json
+{ "result": 3.75 }
+```
+
+```json
+{
+  "error": {
+    "code": -32000,
+    "message": "Check for division by zero or overflow"
+  }
+}
+```
+
+---
+
+## modulo
+
+Returns the remainder of dividing `a` by `b`.
+
+<ParamField body="a" type="number" required>
+  The dividend.
+</ParamField>
+
+<ParamField body="b" type="number" required>
+  The divisor.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The remainder a mod b.
+</ResponseField>
+
+```json
+{ "tool": "modulo", "arguments": { "a": 17, "b": 5 } }
+```
+
+```json
+{ "result": 2 }
+```
+
+---
+
+## Floating-point accuracy
+
+Cruncher uses **integer-scaling** internally to eliminate the classic JavaScript floating-point problem. You will never receive `0.30000000000000004` from an addition of `0.1 + 0.2`.
+
+```json
+{ "tool": "add", "arguments": { "a": 0.1, "b": 0.2 } }
+```
+
+```json
+{ "result": 0.3 }
+```
+
+This applies to all six arithmetic tools and to `evaluate_expression`. The result is exact for financial and scientific decimal calculations without needing an external library.

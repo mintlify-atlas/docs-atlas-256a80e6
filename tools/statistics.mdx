@@ -1,0 +1,300 @@
+---
+title: "Statistical analysis tools in Cruncher MCP: all 10 covered"
+description: "Reference for all 10 statistical tools in Cruncher MCP: sum, average, median, min, max, count, range, variance, standard deviation, and percentile."
+---
+
+Cruncher provides ten statistical tools that operate on arrays of numbers. This page documents each tool, its parameters, and the result it produces. Nine tools are available in the standard tier (the default); `percentile` requires the full tier.
+
+All examples on this page use the array `[15, 22, 8, 41, 19, 30]` so you can compare results across tools.
+
+## Basic aggregates
+
+### sum
+
+Returns the total of all numbers in the array.
+
+<ParamField body="numbers" type="number[]" required>
+  The array of numbers to sum.
+</ParamField>
+
+```json example
+{
+  "tool": "sum",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30] }
+}
+```
+
+**Result:** `135`
+
+---
+
+### avg
+
+Returns the arithmetic mean of the array.
+
+<ParamField body="numbers" type="number[]" required>
+  The array of numbers to average.
+</ParamField>
+
+```json example
+{
+  "tool": "avg",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30] }
+}
+```
+
+**Result:** `22.5`
+
+---
+
+### median
+
+Returns the middle value when the array is sorted. For even-length arrays, returns the mean of the two middle values.
+
+<ParamField body="numbers" type="number[]" required>
+  The array of numbers to find the median of.
+</ParamField>
+
+```json example
+{
+  "tool": "median",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30] }
+}
+```
+
+**Result:** `20.5`
+
+Sorted: `[8, 15, 19, 22, 30, 41]`. The two middle values are `19` and `22`, so the median is `(19 + 22) / 2 = 20.5`.
+
+---
+
+### min
+
+Returns the smallest value in the array.
+
+<ParamField body="numbers" type="number[]" required>
+  The array of numbers to search.
+</ParamField>
+
+```json example
+{
+  "tool": "min",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30] }
+}
+```
+
+**Result:** `8`
+
+---
+
+### max
+
+Returns the largest value in the array.
+
+<ParamField body="numbers" type="number[]" required>
+  The array of numbers to search.
+</ParamField>
+
+```json example
+{
+  "tool": "max",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30] }
+}
+```
+
+**Result:** `41`
+
+---
+
+### count
+
+Returns the number of elements in the array.
+
+<ParamField body="numbers" type="number[]" required>
+  The array of numbers to count.
+</ParamField>
+
+```json example
+{
+  "tool": "count",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30] }
+}
+```
+
+**Result:** `6`
+
+---
+
+### range
+
+Returns the difference between the maximum and minimum values (max − min).
+
+<ParamField body="numbers" type="number[]" required>
+  The array of numbers to compute the range of.
+</ParamField>
+
+```json example
+{
+  "tool": "range",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30] }
+}
+```
+
+**Result:** `33` (41 − 8)
+
+---
+
+## Dispersion: variance and standard deviation
+
+Both `variance` and `std_dev` support two modes controlled by the optional `population` parameter:
+
+- **Sample mode** (`population: false`, the default) — divides by `n − 1`. Use this when your array is a sample drawn from a larger population. This is the statistically unbiased estimator.
+- **Population mode** (`population: true`) — divides by `n`. Use this only when your array represents the complete population.
+
+### variance
+
+Returns the variance of the array, measuring how spread out the values are from the mean.
+
+<ParamField body="numbers" type="number[]" required>
+  The array of numbers.
+</ParamField>
+
+<ParamField body="population" type="boolean" default="false">
+  When `false` (default), uses sample variance (divides by `n − 1`). When `true`, uses population variance (divides by `n`).
+</ParamField>
+
+<CodeGroup>
+
+```json sample variance (default)
+{
+  "tool": "variance",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30] }
+}
+```
+
+```json population variance
+{
+  "tool": "variance",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30], "population": true }
+}
+```
+
+</CodeGroup>
+
+**Sample result:** `129.5` (divides sum of squared deviations by `6 − 1 = 5`)
+
+**Population result:** `107.917` (divides by `6`)
+
+---
+
+### std_dev
+
+Returns the standard deviation — the square root of the variance. Like `variance`, it accepts an optional `population` flag.
+
+<ParamField body="numbers" type="number[]" required>
+  The array of numbers.
+</ParamField>
+
+<ParamField body="population" type="boolean" default="false">
+  When `false` (default), uses sample standard deviation (divides by `n − 1`). When `true`, uses population standard deviation (divides by `n`).
+</ParamField>
+
+<CodeGroup>
+
+```json sample std dev (default)
+{
+  "tool": "std_dev",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30] }
+}
+```
+
+```json population std dev
+{
+  "tool": "std_dev",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30], "population": true }
+}
+```
+
+</CodeGroup>
+
+**Sample result:** `11.3797...` (√129.5)
+
+**Population result:** `10.3884...` (√107.917)
+
+---
+
+## Percentile
+
+<Note>
+  `percentile` is only available in the **full tier**. Set `CRUNCHER_TOOL_SET=full` in your MCP server configuration to enable it.
+</Note>
+
+Returns the value at the Nth percentile of the array. The percentile is computed using linear interpolation on the sorted array.
+
+<ParamField body="numbers" type="number[]" required>
+  The array of numbers.
+</ParamField>
+
+<ParamField body="percentile" type="number" required>
+  The percentile to compute. Must be a number between `0` and `100` inclusive.
+</ParamField>
+
+```json example
+{
+  "tool": "percentile",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30], "percentile": 75 }
+}
+```
+
+**Result:** `29` (the value at the 75th percentile of the sorted array)
+
+<CodeGroup>
+
+```json 25th percentile (Q1)
+{
+  "tool": "percentile",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30], "percentile": 25 }
+}
+```
+
+```json 50th percentile (median)
+{
+  "tool": "percentile",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30], "percentile": 50 }
+}
+```
+
+```json 90th percentile
+{
+  "tool": "percentile",
+  "arguments": { "numbers": [15, 22, 8, 41, 19, 30], "percentile": 90 }
+}
+```
+
+</CodeGroup>
+
+---
+
+## Summary: results for [15, 22, 8, 41, 19, 30]
+
+| Tool | Result |
+|------|--------|
+| `sum` | 135 |
+| `avg` | 22.5 |
+| `median` | 20.5 |
+| `min` | 8 |
+| `max` | 41 |
+| `count` | 6 |
+| `range` | 33 |
+| `variance` (sample) | 129.5 |
+| `std_dev` (sample) | 11.3797... |
+| `percentile(75)` | 29 |
+
+<CardGroup cols={2}>
+  <Card title="Percentages" icon="percent" href="/tools/percentages">
+    Percentage-of, percentage-change, and reverse percentage tools
+  </Card>
+  <Card title="Constants" icon="atom" href="/tools/constants">
+    Mathematical, physical, and chemistry constants
+  </Card>
+</CardGroup>

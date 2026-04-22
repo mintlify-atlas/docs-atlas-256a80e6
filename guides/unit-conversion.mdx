@@ -1,0 +1,255 @@
+---
+title: 'Converting Between Measurement Units in Cruncher MCP'
+description: 'Use convert_unit to convert between 80+ units across 8 categories. Pass a value, category, source unit, and target unit to get a structured result.'
+---
+
+Cruncher's `convert_unit` tool handles over 80 unit conversions across 8 measurement categories, including temperature conversions that require non-linear formulas. You pass a numeric value, the category it belongs to, the unit you are converting from, and the unit you want to convert to. Cruncher returns a structured object with the original value, both unit names, the converted result, and the category.
+
+## Tool signature
+
+```json
+{
+  "tool": "convert_unit",
+  "arguments": {
+    "value": 5,
+    "category": "length",
+    "from": "mi",
+    "to": "km"
+  }
+}
+```
+
+| Argument | Type | Description |
+|----------|------|-------------|
+| `value` | number | The numeric quantity to convert |
+| `category` | string | One of the 8 supported category names |
+| `from` | string | Unit to convert from (case-insensitive) |
+| `to` | string | Unit to convert to (case-insensitive) |
+
+<Note>
+  Unit identifiers are case-insensitive. `"KM"`, `"Km"`, and `"km"` all refer to the same unit.
+</Note>
+
+## Response format
+
+Every successful call returns an object with five fields:
+
+```json
+{
+  "value": 5,
+  "from": "mi",
+  "to": "km",
+  "result": 8.04672,
+  "category": "length"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `value` | The original input value |
+| `from` | The source unit as provided |
+| `to` | The target unit as provided |
+| `result` | The converted numeric result |
+| `category` | The category name |
+
+## Supported categories and units
+
+### Length
+
+| Unit name | Identifier |
+|-----------|------------|
+| Meter | `m` |
+| Kilometer | `km` |
+| Centimeter | `cm` |
+| Millimeter | `mm` |
+| Micrometer | `um` |
+| Nanometer | `nm` |
+| Mile | `mi` |
+| Yard | `yd` |
+| Foot | `ft` |
+| Inch | `in` |
+| Nautical mile | `nmi` |
+
+### Weight
+
+| Unit name | Identifier |
+|-----------|------------|
+| Kilogram | `kg` |
+| Gram | `g` |
+| Milligram | `mg` |
+| Microgram | `ug` |
+| Pound | `lb` |
+| Ounce | `oz` |
+| Stone | `st` |
+| Metric ton | `t` |
+
+### Temperature
+
+| Unit name | Identifier |
+|-----------|------------|
+| Celsius | `c` |
+| Fahrenheit | `f` |
+| Kelvin | `k` |
+
+<Warning>
+  Temperature conversions use non-linear formulas — they are not simple multiplication by a fixed factor. Always use `convert_unit` for temperature; do not attempt to convert manually or via `evaluate_expression`.
+</Warning>
+
+<CodeGroup>
+
+```json Celsius to Fahrenheit
+{
+  "value": 100,
+  "category": "temperature",
+  "from": "c",
+  "to": "f"
+}
+```
+
+```json Fahrenheit to Kelvin
+{
+  "value": 32,
+  "category": "temperature",
+  "from": "f",
+  "to": "k"
+}
+```
+
+```json Kelvin to Celsius
+{
+  "value": 273.15,
+  "category": "temperature",
+  "from": "k",
+  "to": "c"
+}
+```
+
+</CodeGroup>
+
+### Area
+
+| Unit name | Identifier |
+|-----------|------------|
+| Square meter | `m2` |
+| Square kilometer | `km2` |
+| Square centimeter | `cm2` |
+| Square foot | `ft2` |
+| Square inch | `in2` |
+| Square yard | `yd2` |
+| Square mile | `mi2` |
+| Hectare | `ha` |
+| Acre | `ac` |
+
+### Volume
+
+| Unit name | Identifier |
+|-----------|------------|
+| Liter | `L` |
+| Milliliter | `mL` |
+| Cubic meter | `m3` |
+| Cubic centimeter | `cm3` |
+| US gallon | `gal` |
+| US quart | `qt` |
+| US pint | `pt` |
+| US cup | `cup` |
+| US fluid ounce | `floz` |
+| Tablespoon | `tbsp` |
+| Teaspoon | `tsp` |
+| Imperial gallon | `imp_gal` |
+
+### Time
+
+| Unit name | Identifier |
+|-----------|------------|
+| Second | `s` |
+| Millisecond | `ms` |
+| Microsecond | `us` |
+| Nanosecond | `ns` |
+| Minute | `min` |
+| Hour | `hr` |
+| Day | `day` |
+| Week | `week` |
+| Month (avg 30.44 days) | `month` |
+| Year (Julian) | `year` |
+
+### Speed
+
+| Unit name | Identifier |
+|-----------|------------|
+| Meters per second | `m/s` |
+| Kilometers per hour | `km/h` |
+| Miles per hour | `mph` |
+| Knot | `kn` |
+| Feet per second | `ft/s` |
+| Mach (at sea level) | `mach` |
+| Speed of light | `c` |
+
+### Digital storage
+
+| Unit name | Identifier |
+|-----------|------------|
+| Byte | `B` |
+| Kilobyte | `KB` |
+| Megabyte | `MB` |
+| Gigabyte | `GB` |
+| Terabyte | `TB` |
+| Petabyte | `PB` |
+| Bit | `b` |
+| Kilobit | `Kb` |
+| Megabit | `Mb` |
+| Gigabit | `Gb` |
+
+## More examples
+
+<CodeGroup>
+
+```json Miles to kilometers
+{
+  "value": 26.2,
+  "category": "length",
+  "from": "mi",
+  "to": "km"
+}
+```
+
+```json Pounds to kilograms
+{
+  "value": 185,
+  "category": "weight",
+  "from": "lb",
+  "to": "kg"
+}
+```
+
+```json Gigabytes to megabytes
+{
+  "value": 4,
+  "category": "digital_storage",
+  "from": "GB",
+  "to": "MB"
+}
+```
+
+```json Hours to seconds
+{
+  "value": 2.5,
+  "category": "time",
+  "from": "hr",
+  "to": "s"
+}
+```
+
+```json Knots to kilometers per hour
+{
+  "value": 20,
+  "category": "speed",
+  "from": "kn",
+  "to": "km/h"
+}
+```
+
+</CodeGroup>
+
+## Availability
+
+`convert_unit` is available in the **standard** tier (the default). You do not need to set `CRUNCHER_TOOL_SET=full` to use it. See [tool tiers](/configuration/tool-tiers) for the full breakdown.

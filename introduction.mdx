@@ -1,0 +1,88 @@
+---
+title: "Cruncher MCP: A Scientific Calculator for AI Assistants"
+description: "Learn what Cruncher MCP is, why it exists, and how zero-dependency architecture and worker thread isolation solve the AI math hallucination problem."
+---
+
+Cruncher MCP is a scientific calculator server built on the Model Context Protocol (MCP). This page explains what Cruncher is, the problem it solves, and the architectural decisions that make it reliable — covering the MCP protocol, zero-dependency design, worker thread isolation, and integer-scaling math.
+
+## What is Cruncher?
+
+Cruncher is a Node.js MCP server that gives any compatible AI client — Claude Desktop, Cursor, Cline, Goose, Zed, LM Studio, and others — access to 43 mathematical tools. These tools span arithmetic, trigonometry, statistics, percentages, unit conversion, physical constants, and memory operations, all implemented in pure JavaScript with no external libraries.
+
+You run it with a single `npx` command. Once connected, your AI assistant automatically routes math questions to Cruncher instead of attempting to calculate them itself.
+
+## Why Cruncher exists
+
+AI language models are unreliable at math. They hallucinate intermediate results, accumulate floating-point errors, and confidently return wrong answers — especially for statistical calculations, unit conversions, and expressions with multiple operations.
+
+Cruncher eliminates this by offloading every calculation to a validated, deterministic tool. The AI decides *which* tool to call and *what arguments* to pass; Cruncher does the arithmetic and returns an exact result. There is no guessing.
+
+<Note>
+Even simple operations like `0.1 + 0.2` are affected by this. JavaScript's IEEE 754 floating-point representation returns `0.30000000000000004`. Cruncher's integer-scaling approach returns exactly `0.3`.
+</Note>
+
+## What is the Model Context Protocol?
+
+The Model Context Protocol (MCP) is an open standard that lets AI applications connect securely to external tools and data sources. It works like a universal API for AI: instead of each AI client needing a custom integration for every tool, any MCP-compatible client can connect to any MCP server using the same protocol.
+
+Cruncher implements MCP over standard input/output (`stdio`). When an AI client starts Cruncher as a subprocess, the two communicate using JSON-RPC 2.0 messages:
+
+1. **Initialization** — the client sends an `initialize` request; Cruncher responds with its version and capabilities.
+2. **Tool discovery** — the client sends `tools/list`; Cruncher returns the list of available tools and their input schemas.
+3. **Tool calls** — the client sends `tools/call` with a tool name and arguments; Cruncher validates the input, runs the calculation, and returns the result.
+
+<Info>
+Cruncher intentionally avoids the official `@modelcontextprotocol/sdk`. All JSON-RPC handling, input validation, and error formatting is implemented in plain JavaScript, making the codebase a useful reference for developers learning how MCP works under the hood.
+</Info>
+
+## Architecture overview
+
+Cruncher's design prioritizes correctness, safety, and minimal footprint.
+
+### Zero dependencies
+
+Cruncher has no runtime dependencies. It uses only Node.js built-in modules. There is no `mathjs`, no `zod`, no MCP SDK — just a single `cruncher.js` file.
+
+- **Expression evaluation**: Uses `new Function()` guarded by a strict regex whitelist that permits only numbers, math operators, and a fixed set of function names. No `eval()`, no arbitrary code execution.
+- **Input validation**: A custom recursive function validates all AI inputs against JSON Schemas — checking required fields, types, enums, and numeric ranges — without any schema library.
+
+### Worker thread isolation
+
+Every tool call that involves significant computation runs in an isolated Node.js `worker_thread`. This means:
+
+- A slow or infinite calculation cannot block the server's `stdio` communication.
+- If a calculation exceeds the timeout (default: 3 seconds), the main thread forcefully terminates the worker and returns a `-32000` error to the AI client.
+- The timeout is configurable via the `CRUNCHER_TIMEOUT` environment variable (in milliseconds, range 100–60000).
+
+### Integer-scaling decimal math
+
+Standard JavaScript arithmetic produces results like `0.1 + 0.2 = 0.30000000000000004`. Cruncher's `safeMath` helpers work around this by scaling decimal operands to integers before arithmetic, then scaling back. The result is exact decimal math for the operations Cruncher exposes.
+
+### Tiered tool exposure
+
+Cruncher exposes tools in three tiers, controlled by the `CRUNCHER_TOOL_SET` environment variable. Each tier is a strict superset of the previous one.
+
+| Tier | Tools | Context tokens | Use case |
+|------|------:|---------------:|----------|
+| `minimal` | 5 | ~160 | Basic arithmetic only |
+| `standard` (default) | 34 | ~1,150 | Arithmetic, trig, stats, constants, unit conversion |
+| `full` | 43 | ~1,500 | Standard + memory, batch, cache, base conversion, advanced stats |
+
+In `minimal` mode, the `evaluate_expression` tool still handles complex math — individual named tools like `sine` and `sqrt` are simply not registered. This saves up to 90% on context token usage.
+
+## Explore further
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get Cruncher running with Claude Desktop in under 5 minutes
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    All installation methods and platform-specific config paths
+  </Card>
+  <Card title="Tool reference" icon="wrench" href="/tools/overview">
+    Browse all 43 tools with arguments and examples
+  </Card>
+  <Card title="Tool tiers" icon="layer-group" href="/configuration/tool-tiers">
+    Choose the right tier and control context token usage
+  </Card>
+</CardGroup>

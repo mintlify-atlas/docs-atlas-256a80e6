@@ -1,0 +1,191 @@
+---
+title: "Percentage tools in Cruncher MCP: of, change, and reverse"
+description: "Three dedicated percentage tools in Cruncher MCP — percentage-of, percentage-change, and reverse percentage — each solving a distinct real-world calculation."
+---
+
+Cruncher provides three percentage tools that each solve a different variant of percentage arithmetic. All three are available in the standard tier (the default). Using dedicated tools rather than asking your AI to compute percentages inline eliminates the risk of hallucinated results — large language models frequently produce small but critical rounding errors on percentage math.
+
+<Tip>
+  Even simple percentage calculations benefit from using Cruncher. AI models can hallucinate on percentage math, especially when numbers involve decimals or multi-step reasoning. These tools return exact results every time.
+</Tip>
+
+---
+
+## percentage_of
+
+Answers the question: **"What is X% of Y?"**
+
+Given a percentage and a total, returns the portion that percentage represents.
+
+<ParamField body="percent" type="number" required>
+  The percentage value (e.g., `15` for 15%). Do not include the `%` symbol — pass the numeric value only.
+</ParamField>
+
+<ParamField body="total" type="number" required>
+  The total or whole from which the percentage is taken.
+</ParamField>
+
+**Formula:** `result = (percent / 100) × total`
+
+```json example
+{
+  "tool": "percentage_of",
+  "arguments": { "percent": 15, "total": 200 }
+}
+```
+
+**Result:** `30`
+
+15% of 200 is 30.
+
+<CodeGroup>
+
+```json tip calculation
+{
+  "tool": "percentage_of",
+  "arguments": { "percent": 20, "total": 85 }
+}
+```
+
+```json tax rate
+{
+  "tool": "percentage_of",
+  "arguments": { "percent": 8.5, "total": 1200 }
+}
+```
+
+```json discount
+{
+  "tool": "percentage_of",
+  "arguments": { "percent": 35, "total": 149.99 }
+}
+```
+
+</CodeGroup>
+
+---
+
+## percentage_change
+
+Answers the question: **"Going from A to B, what is the percentage change?"**
+
+Returns the percentage increase or decrease between two values. A positive result indicates growth; a negative result indicates a decrease.
+
+<ParamField body="from" type="number" required>
+  The starting value (original).
+</ParamField>
+
+<ParamField body="to" type="number" required>
+  The ending value (new).
+</ParamField>
+
+**Formula:** `result = ((to − from) / |from|) × 100`
+
+```json example
+{
+  "tool": "percentage_change",
+  "arguments": { "from": 50, "to": 80 }
+}
+```
+
+**Result:** `60`
+
+50 → 80 is a 60% increase.
+
+<CodeGroup>
+
+```json price increase
+{
+  "tool": "percentage_change",
+  "arguments": { "from": 120, "to": 150 }
+}
+```
+
+```json stock decline
+{
+  "tool": "percentage_change",
+  "arguments": { "from": 340, "to": 289 }
+}
+```
+
+```json growth rate
+{
+  "tool": "percentage_change",
+  "arguments": { "from": 1000, "to": 1250 }
+}
+```
+
+</CodeGroup>
+
+---
+
+## percentage_reverse
+
+Answers the question: **"X is Y% of what total?"**
+
+Given a value and the percentage it represents, returns the original total.
+
+<ParamField body="value" type="number" required>
+  The known partial value (the portion).
+</ParamField>
+
+<ParamField body="percent" type="number" required>
+  The percentage that the value represents (e.g., `15` for 15%).
+</ParamField>
+
+**Formula:** `result = (value / percent) × 100`
+
+```json example
+{
+  "tool": "percentage_reverse",
+  "arguments": { "value": 30, "percent": 15 }
+}
+```
+
+**Result:** `200`
+
+30 is 15% of 200.
+
+<CodeGroup>
+
+```json find the original price
+{
+  "tool": "percentage_reverse",
+  "arguments": { "value": 45, "percent": 30 }
+}
+```
+
+```json find the survey population
+{
+  "tool": "percentage_reverse",
+  "arguments": { "value": 340, "percent": 85 }
+}
+```
+
+```json find a total from a tax amount
+{
+  "tool": "percentage_reverse",
+  "arguments": { "value": 102, "percent": 8.5 }
+}
+```
+
+</CodeGroup>
+
+---
+
+## Quick reference
+
+| Tool | Question answered | Example | Result |
+|------|-------------------|---------|--------|
+| `percentage_of` | What is X% of Y? | 15% of 200 | 30 |
+| `percentage_change` | A → B, what % change? | 50 → 80 | +60% |
+| `percentage_reverse` | X is Y% of what? | 30 is 15% of ? | 200 |
+
+<CardGroup cols={2}>
+  <Card title="Statistics" icon="chart-bar" href="/tools/statistics">
+    Sum, average, median, variance, standard deviation, and more
+  </Card>
+  <Card title="Unit conversion" icon="arrows-left-right" href="/tools/unit-conversion">
+    Convert between 80+ units across 8 categories
+  </Card>
+</CardGroup>

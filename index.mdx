@@ -1,97 +1,96 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Cruncher MCP: Zero-dependency scientific calculator for AI"
+description: "Cruncher MCP gives your AI 43 precise calculator tools — arithmetic, trig, statistics, unit conversion, and constants — with zero dependencies."
 ---
 
-## Setting up
+Cruncher is a scientific calculator built for the Model Context Protocol (MCP). It gives any MCP-compatible AI client — Claude Desktop, Cursor, Cline, Goose, and others — access to 43 mathematical tools spanning arithmetic, trigonometry, statistics, unit conversion, and physical constants. Everything runs in pure Node.js with no external dependencies, worker-thread isolation for safety, and integer-scaling math for decimal accuracy.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get Cruncher running with your AI client in under 5 minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Installation" icon="download" href="/installation">
+    Install via npx, npm, or download the single-file server
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Tool Reference" icon="wrench" href="/tools/overview">
+    Browse all 43 tools across arithmetic, trig, stats, and more
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Configuration" icon="gear" href="/configuration/tool-tiers">
+    Choose the right tool tier and tune performance settings
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Why Cruncher?
 
-Everything you need to create world-class documentation.
+AI language models hallucinate on math. Cruncher eliminates that by offloading every calculation to a validated, deterministic tool — no guessing, no floating-point drift, no infinite loops.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={2}>
+  <Card title="Zero dependencies" icon="box">
+    Pure Node.js — no mathjs, no zod, no SDK. A single `cruncher.js` file is all you need.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Accurate decimal math" icon="calculator">
+    Integer-scaling arithmetic ensures `0.1 + 0.2 === 0.3`. No IEEE 754 drift.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Worker thread isolation" icon="shield">
+    Heavy calculations run in isolated threads with a configurable timeout. The server never freezes.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="Tiered tool exposure" icon="layer-group">
+    Choose minimal (5 tools), standard (34 tools), or full (43 tools) to control context token usage.
   </Card>
-</Columns>
+</CardGroup>
 
-## Need inspiration?
+## Get started in minutes
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Steps>
+  <Step title="Run Cruncher via npx">
+    No installation needed. Add this to your AI client's MCP configuration:
+
+    ```json claude_desktop_config.json
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "npx",
+          "args": ["@slbdn/cruncher-mcp"]
+        }
+      }
+    }
+    ```
+  </Step>
+  <Step title="Restart your AI client">
+    Quit and relaunch your AI application so it picks up the new MCP server configuration.
+  </Step>
+  <Step title="Start calculating">
+    Ask your AI assistant to use Cruncher for any math. It will automatically call the right tool — no special prompting required.
+
+    > "Calculate the standard deviation of [85, 92, 78, 90, 88]"
+    >
+    > "Convert 26.2 miles to kilometers"
+    >
+    > "Evaluate: sin(pi/4) + sqrt(16) + log10(100)"
+  </Step>
+</Steps>
+
+## Supported AI clients
+
+Cruncher works with any MCP-compatible client. See the [AI client setup guide](/configuration/ai-clients) for detailed configuration instructions for each platform.
+
+<CardGroup cols={3}>
+  <Card title="Claude Desktop" icon="comment" href="/configuration/ai-clients">
+    Anthropic's desktop app
+  </Card>
+  <Card title="Cursor IDE" icon="code" href="/configuration/ai-clients">
+    AI-powered code editor
+  </Card>
+  <Card title="Cline (VS Code)" icon="brackets-curly" href="/configuration/ai-clients">
+    Agentic coding extension
+  </Card>
+  <Card title="OpenWebUI" icon="globe" href="/configuration/ai-clients">
+    Self-hosted LLM interface
+  </Card>
+  <Card title="Goose" icon="terminal" href="/configuration/ai-clients">
+    Terminal AI agent
+  </Card>
+  <Card title="LM Studio" icon="microchip" href="/configuration/ai-clients">
+    Local model runner
+  </Card>
+</CardGroup>

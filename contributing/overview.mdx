@@ -1,0 +1,211 @@
+---
+title: 'How to contribute to Cruncher MCP: adding tools and PRs'
+description: 'Learn how to set up the development environment, add new tools, follow code conventions, and submit pull requests to Cruncher MCP.'
+keywords: ['contributing', 'development', 'cruncher', 'mcp', 'pull request', 'tools']
+---
+
+Cruncher MCP is a zero-dependency scientific calculator MCP server where all logic lives in a single file, `cruncher.js`. This page covers everything you need to know to contribute: prerequisites, setup, how to add a new tool, and what to include in your pull request.
+
+## Prerequisites
+
+Before you begin, make sure you have the following installed:
+
+- **Node.js >= 18** — The server runs on plain Node.js with no build step.
+- **TypeScript / tsx** — Required to run the test suite via `npx tsx`.
+
+## Setup
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/islobodan/cruncher-mcp.git
+    cd cruncher-mcp
+    ```
+  </Step>
+  <Step title="Start the server">
+    The server communicates over stdio and has no install step — just run it directly:
+
+    ```bash
+    node cruncher.js
+    ```
+  </Step>
+  <Step title="Run the test suite">
+    All tests must pass before submitting a PR:
+
+    ```bash
+    npx tsx test-cruncher-full.ts
+    ```
+  </Step>
+</Steps>
+
+## Core principles
+
+Every contribution should respect these design constraints:
+
+- **Zero dependencies** — No `mathjs`, `zod`, `@modelcontextprotocol/sdk`, or other external packages. Use only Node.js built-in modules.
+- **Single-file server** — All logic lives in `cruncher.js`. Do not introduce additional source files.
+- **Type safety via validation** — Input validation uses a custom recursive JSON-Schema validator, not an external library.
+- **Main-thread first** — Instant, non-blocking operations run inline. Only computationally heavy operations use worker threads.
+- **Strict security** — All expression inputs go through a regex whitelist. No `eval()`.
+
+## Adding a new tool
+
+<Steps>
+  <Step title="Add the tool definition">
+    Add an entry to the `toolsAll` array in `cruncher.js`. The definition includes the tool name, a human-readable description, and an `inputSchema` object that describes the expected arguments:
+
+    ```javascript
+    {
+        name: "convert_unit",
+        description: "Convert between common units.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                value: { type: "number" },
+                category: { type: "string", enum: ["length", "weight"] },
+                from: { type: "string" },
+                to: { type: "string" },
+            },
+            required: ["value", "category", "from", "to"],
+        },
+    }
+    ```
+  </Step>
+  <Step title="Add the handler">
+    Add a matching entry to the `toolHandlers` object. The key must match the tool `name` exactly:
+
+    ```javascript
+    convert_unit: ({ value, category, from, to }) => {
+        // conversion logic here
+        return result;
+    },
+    ```
+  </Step>
+  <Step title="Assign a tier">
+    Decide which tier the tool belongs to:
+
+    | Tier | Scope | Examples |
+    |------|-------|---------|
+    | `standard` | Everyday math — trig, stats, percentages, constants, unit conversion | `sine`, `avg`, `convert_unit` |
+    | `full` | Specialized tools — memory, base conversion, percentiles, batch, cache | `memory_add`, `percentile`, `batch` |
+
+    The tier controls which `CRUNCHER_TOOL_SET` value exposes the tool.
+  </Step>
+  <Step title="Set cacheability">
+    If the tool is stateful (it reads from or writes to shared state such as memory, batch queues, or the cache itself), add it to the `NON_CACHEABLE` set so repeated calls are never served from the LRU cache:
+
+    ```javascript
+    const NON_CACHEABLE = new Set([
+        "memory_add", "memory_subtract", "memory_recall", "memory_clear",
+        "batch", "cache_clear", "cache_info",
+        "your_stateful_tool",  // add here if needed
+    ]);
+    ```
+
+    Stateless tools (pure functions that always return the same result for the same inputs) do not need this — they benefit from automatic caching.
+  </Step>
+  <Step title="Choose main-thread or worker-thread">
+    Add the tool to `MAIN_THREAD_TOOLS` if it completes instantly and does not risk blocking the event loop. Leave it out to run it in an isolated worker thread with timeout protection.
+
+    ```javascript
+    const MAIN_THREAD_TOOLS = new Set([
+        // existing instant tools ...
+        "convert_unit",  // add here if instant
+    ]);
+    ```
+
+    **Main-thread** (instant, safe inline): math one-liners (`power`, `sqrt`, `log`), constant lookups, statistical summaries (`count`, `min`, `max`, `variance`, `std_dev`), percentage calculations, trig functions, memory recall, cache management, and unit conversion.
+
+    **Worker-thread** (potentially expensive, needs timeout): `evaluate_expression`, `factorial`, `median`, `percentile`, `sum`, `avg`, `range`, `divide`, `modulo`, trig tools with unit-conversion overhead, and `convert_base`.
+  </Step>
+  <Step title="Write tests">
+    Add tests in `test-cruncher-full.ts` covering three scenarios:
+
+    ```typescript
+    results.push(
+        await runTest("convert_unit: miles to kilometers", async () => {
+            const result = await client.callTool({
+                name: "convert_unit",
+                arguments: { value: 5, category: "length", from: "mi", to: "km" },
+            });
+            const parsed = JSON.parse(result.content[0].text);
+            if (parsed.result !== 8.04672) {
+                throw new Error(`Expected 8.04672, got ${parsed.result}`);
+            }
+        }),
+    );
+    ```
+
+    Every new tool needs tests for:
+    - **Success cases** — normal input and edge values
+    - **Error cases** — invalid input and boundary conditions
+    - **Schema validation errors** — wrong types, missing required fields, out-of-enum values
+  </Step>
+  <Step title="Update documentation">
+    Update the following files to reflect your addition:
+
+    - `README.md` — Add the tool to the available tools table and, if applicable, the tier reference section.
+    - `CHANGELOG.md` — Add an entry describing the new tool.
+    - `TODO.md` — Remove any related open items.
+  </Step>
+</Steps>
+
+## Code style
+
+- **Indentation**: 4 spaces, matching the existing file.
+- **Tool names**: `snake_case` (e.g., `convert_unit`, `std_dev`).
+- **Variables**: `camelCase`.
+- **Error messages**: Descriptive and human-readable, with enough context for an AI client to understand what went wrong.
+- **No external dependencies**: If a Node.js built-in can do the job, use it.
+
+## Commit conventions
+
+Commits follow a `type: description` format:
+
+| Type | When to use |
+|------|-------------|
+| `feat` | New tool or feature |
+| `docs` | Documentation changes only |
+| `fix` | Bug fix |
+| `perf` | Performance improvement |
+| `refactor` | Code restructuring without behavior change |
+| `test` | Test additions or changes |
+| `license` | License file changes |
+
+Example: `feat: add convert_unit tool to standard tier`
+
+## PR checklist
+
+<AccordionGroup>
+  <Accordion title="Tests and correctness">
+    - All tests pass (`npx tsx test-cruncher-full.ts`)
+    - New tool has tests for success, error, and edge cases
+    - Schema validation errors are tested
+  </Accordion>
+  <Accordion title="Architecture decisions">
+    - Tool is assigned to the correct tier (`standard` or `full`)
+    - Cacheability is considered — stateful tools are added to `NON_CACHEABLE`
+    - Main-thread vs worker-thread decision is made and applied
+    - New tool has a strict JSON Schema `inputSchema` definition
+  </Accordion>
+  <Accordion title="Security">
+    - No `eval()` usage introduced
+    - Any expression-like inputs go through the regex whitelist
+    - Input is sanitized before any computation
+  </Accordion>
+  <Accordion title="Documentation">
+    - `README.md` updated with the new tool
+    - `CHANGELOG.md` updated
+    - `TODO.md` updated
+  </Accordion>
+</AccordionGroup>
+
+## Reporting issues
+
+- **Bugs**: Open a GitHub issue and include a minimal test case that reproduces the problem.
+- **Feature requests**: Describe the use case and the expected behavior.
+- **Security vulnerabilities**: Do not open a public issue. See the [security policy](/contributing/security) for responsible disclosure instructions.
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the MIT License.

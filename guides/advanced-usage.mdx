@@ -1,0 +1,273 @@
+---
+title: 'Advanced Cruncher MCP Features and Power Workflows'
+description: 'Use batch processing, persistent memory, result caching, and fuzzy tool matching to build efficient multi-step calculation workflows with Cruncher MCP.'
+---
+
+Cruncher's full tier unlocks several features designed for multi-step workflows and power users: batch processing up to 50 operations in a single request, persistent calculator memory for running totals, automatic LRU caching, and a global angle mode for trigonometry. This page covers each feature in detail with working examples.
+
+<Note>
+  Batch processing, memory operations, base conversion, percentile, and cache management all require `CRUNCHER_TOOL_SET=full`. Set this in the `env` block of your MCP server configuration. See [environment variables](/configuration/environment-variables).
+</Note>
+
+## Batch processing
+
+The `batch` tool executes up to 50 tool operations in a single MCP call. Use it when you need results from multiple independent tools and want to minimize round-trips, or when individual tool calls in a sequence depend on Cruncher (not on your AI client's logic) to proceed.
+
+### Batch request format
+
+```json
+{
+  "tool": "batch",
+  "arguments": {
+    "operations": [
+      { "tool": "sqrt", "arguments": { "value": 144 } },
+      { "tool": "add", "arguments": { "a": 12, "b": 10 } },
+      { "tool": "avg", "arguments": { "numbers": [85, 92, 78, 90, 88] } }
+    ]
+  }
+}
+```
+
+Each operation is an object with a `tool` name and an `arguments` object that matches the tool's normal schema.
+
+### Partial failure tolerance
+
+If one operation in a batch fails, the remaining operations still execute. The response includes a result entry for every operation — succeeded ones return their value, failed ones return an error object. Your AI client can inspect each result independently.
+
+```json
+{
+  "results": [
+    { "index": 0, "result": 12 },
+    { "index": 1, "result": 22 },
+    { "index": 2, "error": "numbers must be an array" }
+  ]
+}
+```
+
+### Example: multi-step analysis in one call
+
+This batch computes several statistics and a unit conversion at once:
+
+```json
+{
+  "tool": "batch",
+  "arguments": {
+    "operations": [
+      { "tool": "sum",    "arguments": { "numbers": [10, 20, 30, 40, 50] } },
+      { "tool": "avg",    "arguments": { "numbers": [10, 20, 30, 40, 50] } },
+      { "tool": "std_dev","arguments": { "numbers": [10, 20, 30, 40, 50], "population": false } },
+      { "tool": "convert_unit", "arguments": { "value": 26.2, "category": "length", "from": "mi", "to": "km" } }
+    ]
+  }
+}
+```
+
+<Tip>
+  Even in the full tier, prefer `evaluate_expression` for anything that fits in a single math string. Use `batch` for operations that are genuinely separate — different tools, different inputs, or statistical functions that each need their own `numbers` array.
+</Tip>
+
+## Memory operations
+
+Cruncher maintains a persistent in-memory register (like the M+/M- keys on a physical calculator). The register starts at zero when the server starts and persists for the lifetime of the session.
+
+| Tool | Purpose |
+|------|---------|
+| `memory_add` | Adds a value to the memory register |
+| `memory_subtract` | Subtracts a value from the memory register |
+| `memory_recall` | Returns the current value in the register |
+| `memory_clear` | Resets the register to zero |
+
+### Memory workflow example
+
+Accumulate a running total across several separate operations:
+
+<Steps>
+  <Step title="Clear memory to start fresh">
+    ```json
+    { "tool": "memory_clear", "arguments": {} }
+    → "Memory cleared."
+    ```
+  </Step>
+  <Step title="Store an initial value">
+    ```json
+    { "tool": "memory_add", "arguments": { "value": 99 } }
+    → "Memory: 99"
+    ```
+  </Step>
+  <Step title="Add a result to memory">
+    ```json
+    { "tool": "memory_add", "arguments": { "value": 5 } }
+    → "Memory: 104"
+    ```
+  </Step>
+  <Step title="Subtract an adjustment">
+    ```json
+    { "tool": "memory_subtract", "arguments": { "value": 14 } }
+    → "Memory: 90"
+    ```
+  </Step>
+  <Step title="Recall the final total">
+    ```json
+    { "tool": "memory_recall", "arguments": {} }
+    → 90
+    ```
+  </Step>
+</Steps>
+
+## Result caching
+
+Cruncher automatically caches every tool call result using an LRU (least-recently-used) cache. When your AI client calls the same tool with the same arguments a second time, the cached result is returned immediately at zero computation cost.
+
+| Property | Value |
+|----------|-------|
+| Cache type | LRU (least-recently-used) |
+| Maximum entries | 1000 |
+| Entry TTL | 5 minutes |
+| Scope | Full tier only |
+
+Cache management tools:
+
+| Tool | Purpose |
+|------|---------|
+| `cache_info` | Returns current cache size and hit/miss statistics |
+| `cache_clear` | Evicts all cached entries |
+
+```json
+{ "tool": "cache_info", "arguments": {} }
+```
+
+```json
+{
+  "size": 42,
+  "hits": 18,
+  "misses": 24
+}
+```
+
+<Note>
+  You do not need to do anything to benefit from caching. Cruncher handles it automatically. Use `cache_clear` only if you are certain you need a fresh result for a call that was previously made with the same arguments.
+</Note>
+
+## Angle mode
+
+Individual trigonometric tools (`sine`, `cosine`, `tangent`, `asin`, `acos`, `atan`) use a global angle mode. The default mode is **degrees**.
+
+| Tool | Purpose |
+|------|---------|
+| `get_angle_mode` | Returns the current global angle mode |
+| `set_angle_mode` | Sets the global mode to `"degrees"` or `"radians"` |
+
+```json
+{ "tool": "get_angle_mode", "arguments": {} }
+→ "degrees"
+
+{ "tool": "set_angle_mode", "arguments": { "mode": "radians" } }
+→ "Angle mode set to radians."
+```
+
+Every individual trig tool also accepts an explicit `unit` parameter that overrides the global mode for that single call:
+
+```json
+{ "tool": "sine", "arguments": { "angle": 90, "unit": "degrees" } }
+→ 1
+
+{ "tool": "sine", "arguments": { "angle": 1.5708, "unit": "radians" } }
+→ ~1
+```
+
+<Warning>
+  `evaluate_expression` always uses radians, regardless of the global angle mode. This is a fixed behavior, not configurable. If your expression uses trig functions and you want degree inputs, convert to radians first: degrees × (pi / 180).
+</Warning>
+
+`set_angle_mode` and `get_angle_mode` are available in the **standard** tier (the default).
+
+## Fuzzy tool name matching
+
+If your AI client sends a `tools/call` request with a tool name that does not exist, Cruncher uses Levenshtein distance and prefix matching to find the closest registered tool name and includes a suggestion in the error response.
+
+```json
+{
+  "error": {
+    "code": -32601,
+    "message": "Tool 'squrt' not found. Did you mean 'sqrt'?"
+  }
+}
+```
+
+<AccordionGroup>
+  <Accordion title="Which typos get suggestions?">
+    Cruncher suggests a tool when the Levenshtein distance between the called name and a registered tool name is small enough to indicate a likely typo — typically one or two character differences, transpositions, or matching prefixes.
+
+    | Called | Suggestion |
+    |--------|------------|
+    | `fact` | `factorial` |
+    | `fac` | `factorial` |
+    | `sinn` | `sine` |
+    | `squrt` | `sqrt` |
+    | `adddd` | `add` |
+    | `divid` | `divide` |
+    | `fctorial` | `factorial` |
+    | `totally_wrong` | *(no suggestion)* |
+  </Accordion>
+  <Accordion title="Why does this matter for AI clients?">
+    LLMs occasionally generate tool names with minor typos, especially when working with large tool lists. Without fuzzy matching, these calls would fail silently or produce unhelpful errors. With fuzzy matching, the LLM receives an actionable suggestion and can self-correct on the next attempt without user intervention.
+  </Accordion>
+  <Accordion title="Does this work across all tiers?">
+    Yes. Fuzzy matching is active in all tiers — minimal, standard, and full. It only suggests tools that are actually registered in the current tier, so calling `batch` while in standard mode will not suggest `batch` as a match (it is not registered).
+  </Accordion>
+</AccordionGroup>
+
+## Tier summary
+
+<Tabs>
+  <Tab title="Standard (default)">
+    The standard tier includes 34 tools covering arithmetic, trigonometry, logarithms, statistics, percentages, unit conversion, and constants. It also includes `set_angle_mode` and `get_angle_mode`.
+
+    ```json
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "npx",
+          "args": ["@slbdn/cruncher-mcp"]
+        }
+      }
+    }
+    ```
+
+    No extra configuration needed — standard is the default.
+  </Tab>
+  <Tab title="Full">
+    The full tier adds 9 more tools on top of standard: `percentile`, `convert_base`, `memory_add`, `memory_subtract`, `memory_recall`, `memory_clear`, `batch`, `cache_clear`, and `cache_info`.
+
+    ```json
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "npx",
+          "args": ["@slbdn/cruncher-mcp"],
+          "env": {
+            "CRUNCHER_TOOL_SET": "full"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Minimal">
+    The minimal tier exposes only 5 tools: `evaluate_expression`, `add`, `subtract`, `multiply`, and `divide`. Use it to minimize context token usage (~160 tokens). All complex math can still be done through `evaluate_expression`.
+
+    ```json
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "npx",
+          "args": ["@slbdn/cruncher-mcp"],
+          "env": {
+            "CRUNCHER_TOOL_SET": "minimal"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>

@@ -1,0 +1,163 @@
+---
+title: 'Batch processing and LRU caching tools in Cruncher MCP'
+description: 'Execute up to 50 tool operations in a single request and exploit automatic LRU caching to eliminate redundant worker-thread spawns on repeated calls.'
+---
+
+Cruncher's full tier includes two administrative capabilities that improve throughput for complex workflows: the `batch` tool groups multiple operations into one round-trip request, while an automatic LRU cache makes repeated calls with identical arguments essentially free. This page covers both features in detail.
+
+<Note>
+  `batch`, `cache_clear`, and `cache_info` are available in the **full tier** only. Set `CRUNCHER_TOOL_SET=full` in your MCP server configuration to enable them.
+</Note>
+
+---
+
+## Batch processing
+
+The `batch` tool executes a sequence of Cruncher tool calls in order, collecting each result before moving to the next. It is the right choice whenever you need 2 or more operations whose individual results you want to inspect, or whose execution order matters and they cannot be expressed as a single `evaluate_expression` string.
+
+### Tool: batch
+
+<ParamField body="operations" type="object[]" required>
+  An ordered array of up to 50 operation objects to execute sequentially.
+
+  <Expandable title="operation object properties">
+    <ResponseField name="tool" type="string" required>
+      The name of the Cruncher tool to call (e.g. `"sqrt"`, `"add"`, `"memory_add"`).
+    </ResponseField>
+    <ResponseField name="args" type="object" required>
+      An object containing the arguments for the named tool, using the same parameter names as a direct call. Pass an empty object `{}` for tools that take no arguments.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+### Operations array format
+
+Each element of `operations` must have a `tool` key and an `args` key. The `args` value is an object — not an array — whose keys match the target tool's own parameter names.
+
+```json
+{
+  "tool": "batch",
+  "arguments": {
+    "operations": [
+      { "tool": "sqrt",        "args": { "value": 144 } },
+      { "tool": "add",         "args": { "a": 12, "b": 10 } },
+      { "tool": "memory_add",  "args": { "value": 22 } },
+      { "tool": "memory_recall", "args": {} }
+    ]
+  }
+}
+```
+
+### Response format
+
+`batch` returns an array with one entry per operation, in the same order they were submitted.
+
+<ResponseField name="index" type="number" required>
+  Zero-based position of this operation in the submitted array.
+</ResponseField>
+<ResponseField name="tool" type="string" required>
+  The tool name that was called.
+</ResponseField>
+<ResponseField name="success" type="boolean" required>
+  `true` if the operation completed without error, `false` otherwise.
+</ResponseField>
+<ResponseField name="data" type="any">
+  The return value of the tool when `success` is `true`. Shape depends on the individual tool.
+</ResponseField>
+<ResponseField name="error" type="string">
+  A human-readable error message when `success` is `false`. Present only on failure.
+</ResponseField>
+
+### Partial failure tolerance
+
+`batch` does not stop when a single operation fails. It continues executing all remaining operations and sets `success: false` plus an `error` message on the failing entry. The rest of the results are still returned.
+
+```json
+[
+  { "index": 0, "tool": "sqrt",    "success": true,  "data": 12 },
+  { "index": 1, "tool": "divide",  "success": false, "error": "Division by zero" },
+  { "index": 2, "tool": "add",     "success": true,  "data": 22 }
+]
+```
+
+In the example above, the `divide` call failed (division by zero), but `add` still ran and returned its result.
+
+### Limits and behavior
+
+- **Maximum 50 operations** per `batch` call. Submitting more than 50 triggers a validation error before execution begins.
+- Operations run **sequentially**, not in parallel. Each operation waits for the previous one to complete.
+- Sub-operations **check the cache** before spawning a worker thread. If a matching cached result exists, the cached value is used and no worker is started.
+- `batch` itself is **not cached**. Each `batch` call executes fresh.
+
+---
+
+## Caching
+
+Cruncher maintains an LRU (Least Recently Used) in-memory cache of tool results. Caching is entirely automatic — you do not configure it per call. Any tool call that is eligible for caching will be read from cache on a repeat call with the same arguments, at zero cost (no worker thread is spawned).
+
+### Cache behavior
+
+| Property | Value |
+|---|---|
+| Maximum entries | 1,000 |
+| TTL (time-to-live) | 5 minutes |
+| Eviction policy | LRU (least recently used entry evicted when capacity is reached) |
+| Cost of a cache hit | Zero (no worker thread spawn) |
+
+### Non-cacheable tools
+
+The following tools are stateful or administrative and are never cached:
+
+- `memory_add`, `memory_subtract`, `memory_recall`, `memory_clear`
+- `batch`
+- `cache_clear`, `cache_info`
+
+All other tools — arithmetic, trigonometry, statistics, unit conversion, base conversion, constants, and so on — are eligible for caching.
+
+### Tool: cache_clear
+
+Clears all entries from the LRU cache. Takes no arguments. Call this if you need to force recalculation of previously cached results (for example, after changing a global setting like angle mode).
+
+```json
+{
+  "tool": "cache_clear",
+  "arguments": {}
+}
+```
+
+### Tool: cache_info
+
+Returns current statistics about the cache. Takes no arguments.
+
+```json
+{
+  "tool": "cache_info",
+  "arguments": {}
+}
+```
+
+**Response fields:**
+
+<ResponseField name="size" type="number" required>
+  The number of entries currently stored in the cache.
+</ResponseField>
+<ResponseField name="max_size" type="number" required>
+  The maximum number of entries the cache can hold before LRU eviction begins. Always `1000`.
+</ResponseField>
+<ResponseField name="ttl_ms" type="number" required>
+  The time-to-live for each cache entry in milliseconds. Always `300000` (5 minutes).
+</ResponseField>
+
+Example response:
+
+```json
+{
+  "size": 42,
+  "max_size": 1000,
+  "ttl_ms": 300000
+}
+```
+
+<Tip>
+  Call `cache_info` before and after a batch of computations to confirm entries are being cached. If `size` grows as expected, your calls are eligible for caching and future identical calls will be instant.
+</Tip>

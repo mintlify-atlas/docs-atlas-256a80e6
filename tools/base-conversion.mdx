@@ -1,0 +1,119 @@
+---
+title: 'Number base conversion in Cruncher MCP: binary, hex, octal'
+description: 'Convert integers between binary, octal, decimal, and hexadecimal using a single validated tool call. Hex output is always uppercase; input is always a string.'
+---
+
+Cruncher's `convert_base` tool converts integer values between the four positional numeral systems most commonly used in computing: binary (base 2), octal (base 8), decimal (base 10), and hexadecimal (base 16). Input is passed as a string so that leading zeros and hex digits are preserved exactly as written. The tool validates that every character in the input is legal for the specified source base before performing the conversion.
+
+<Note>
+  `convert_base` is available in the **full tier** only. Set `CRUNCHER_TOOL_SET=full` in your MCP server configuration to enable it.
+</Note>
+
+## Tool: convert_base
+
+<ParamField body="value" type="string" required>
+  The number to convert, expressed in the source base. Must be a string (not a number) so that leading zeros and uppercase hex digits such as `FF` or `0xFF` are handled correctly. Only characters valid for `from_base` are accepted; invalid characters trigger a validation error.
+</ParamField>
+
+<ParamField body="from_base" type="number" required>
+  The base of the input value. Must be one of `2`, `8`, `10`, or `16`.
+</ParamField>
+
+<ParamField body="to_base" type="number" required>
+  The base to convert the value into. Must be one of `2`, `8`, `10`, or `16`.
+</ParamField>
+
+### Input format notes
+
+- `value` is always a **string**. Pass `"255"`, `"FF"`, `"0xFF"`, or `"11111111"` — not the number `255`.
+- The `0x` prefix is accepted for hexadecimal input but is not included in the output.
+- **Hex output is always uppercase.** Converting any value to base 16 returns digits like `FF`, never `ff`.
+- Only non-negative integers are supported. Fractional or negative values are not valid inputs.
+
+## Examples
+
+<CodeGroup>
+
+```json Binary to decimal
+{
+  "tool": "convert_base",
+  "arguments": {
+    "value": "11010",
+    "from_base": 2,
+    "to_base": 10
+  }
+}
+```
+
+```json Decimal to binary
+{
+  "tool": "convert_base",
+  "arguments": {
+    "value": "26",
+    "from_base": 10,
+    "to_base": 2
+  }
+}
+```
+
+```json Hex to binary
+{
+  "tool": "convert_base",
+  "arguments": {
+    "value": "0xFF",
+    "from_base": 16,
+    "to_base": 2
+  }
+}
+```
+
+```json Decimal to hex
+{
+  "tool": "convert_base",
+  "arguments": {
+    "value": "255",
+    "from_base": 10,
+    "to_base": 16
+  }
+}
+```
+
+```json Octal to decimal
+{
+  "tool": "convert_base",
+  "arguments": {
+    "value": "17",
+    "from_base": 8,
+    "to_base": 10
+  }
+}
+```
+
+</CodeGroup>
+
+### Expected results
+
+| Input value | from_base | to_base | Result |
+|---|---|---|---|
+| `"11010"` | 2 | 10 | `26` |
+| `"26"` | 10 | 2 | `11010` |
+| `"0xFF"` | 16 | 2 | `11111111` |
+| `"255"` | 10 | 16 | `FF` |
+| `"17"` | 8 | 10 | `15` |
+
+<Tip>
+  The README example `"Convert 0xFF from hex to binary"` maps directly to `convert_base({ value: "0xFF", from_base: 16, to_base: 2 })`, which returns `"11111111"`.
+</Tip>
+
+## Supported bases
+
+| Base | Name | Valid input characters |
+|---|---|---|
+| `2` | Binary | `0`, `1` |
+| `8` | Octal | `0`–`7` |
+| `10` | Decimal | `0`–`9` |
+| `16` | Hexadecimal | `0`–`9`, `A`–`F`, `a`–`f`, optional `0x` prefix |
+
+<Warning>
+  Sending characters outside the allowed set for `from_base` — for example, `"9"` with `from_base: 2` — returns a `-32602` validation error with the exact property path. Always validate your input string before calling the tool.
+</Warning>

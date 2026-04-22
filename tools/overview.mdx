@@ -1,0 +1,184 @@
+---
+title: 'Cruncher MCP tool reference: all 43 tools by category'
+description: 'Complete reference for all Cruncher MCP tools grouped by category and tier. Covers validation errors, fuzzy tool name matching, and links to detail pages.'
+keywords: ['cruncher', 'mcp', 'tools', 'calculator', 'reference', 'arithmetic', 'trigonometry', 'logarithm']
+---
+
+Cruncher exposes up to 43 MCP tools depending on the active tier. This page gives you a complete picture of what is available, how tools are grouped, and what to expect when something goes wrong. Use the category cards below to jump to detailed documentation for each group.
+
+## Tier system
+
+Cruncher controls which tools are registered with the MCP client via the `CRUNCHER_TOOL_SET` environment variable. Each tier is a strict superset of the one before it.
+
+| Tier | Tools registered | Token budget | Best for |
+|------|-----------------|--------------|----------|
+| `minimal` | 5 | ~160 tokens | Lightweight agents; all complex math via `evaluate_expression` |
+| `standard` *(default)* | 34 | ~1,150 tokens | General-purpose AI assistants: arithmetic, trig, stats, constants, unit conversion |
+| `full` | 43 | ~1,500 tokens | Power users: adds memory, batch, cache, base conversion, percentile |
+
+<Note>
+Even in `minimal` mode, `evaluate_expression` handles complex math internally. Individual tools like `sine` and `sqrt` simply are not registered as separate MCP calls, saving up to 90% of context tokens.
+</Note>
+
+For configuration instructions and environment variable reference, see [Tool Tiers](/configuration/tool-tiers).
+
+## All tools by category
+
+### Arithmetic — minimal tier
+
+| Tool | Description | Arguments |
+|------|-------------|-----------|
+| `evaluate_expression` | Evaluates a plain-text math expression | `expression` (string) |
+| `add` | a + b | `a`, `b` (number) |
+| `subtract` | a − b | `a`, `b` (number) |
+| `multiply` | a × b | `a`, `b` (number) |
+| `divide` | a ÷ b | `a`, `b` (number) |
+| `modulo` | a mod b (remainder) | `a`, `b` (number) |
+
+### Power, roots, and number theory — standard tier
+
+| Tool | Description | Arguments |
+|------|-------------|-----------|
+| `power` | a raised to exponent b | `base`, `exponent` (number) |
+| `sqrt` | Square root | `value` (number) |
+| `factorial` | n! for non-negative integers | `n` (number) |
+
+### Trigonometry — standard tier
+
+| Tool | Description | Arguments |
+|------|-------------|-----------|
+| `sine` | Sine of an angle | `angle` (number), `unit` (optional) |
+| `cosine` | Cosine of an angle | `angle` (number), `unit` (optional) |
+| `tangent` | Tangent of an angle | `angle` (number), `unit` (optional) |
+| `asin` | Arcsine — value must be in \[−1, 1\] | `value` (number), `unit` (optional) |
+| `acos` | Arccosine — value must be in \[−1, 1\] | `value` (number), `unit` (optional) |
+| `atan` | Arctangent | `value` (number), `unit` (optional) |
+| `set_angle_mode` | Set global angle mode | `mode` (`"degrees"` or `"radians"`) |
+| `get_angle_mode` | Return current global angle mode | *(none)* |
+
+### Logarithms and absolute value — standard tier
+
+| Tool | Description | Arguments |
+|------|-------------|-----------|
+| `logarithm` | Base-10 logarithm | `value` (number) |
+| `natural_log` | Natural logarithm (base e) | `value` (number) |
+| `absolute` | Absolute value | `value` (number) |
+
+### Statistical functions — standard tier
+
+| Tool | Description | Arguments |
+|------|-------------|-----------|
+| `sum` | Sum of an array | `numbers` (number\[\]) |
+| `avg` | Average of an array | `numbers` (number\[\]) |
+| `median` | Median of an array | `numbers` (number\[\]) |
+| `min` | Minimum value | `numbers` (number\[\]) |
+| `max` | Maximum value | `numbers` (number\[\]) |
+| `count` | Count of elements | `numbers` (number\[\]) |
+| `range` | max − min | `numbers` (number\[\]) |
+| `variance` | Sample or population variance | `numbers` (number\[\]), `population` (boolean, optional) |
+| `std_dev` | Standard deviation | `numbers` (number\[\]), `population` (boolean, optional) |
+| `percentile` | Value at Nth percentile — **full tier** | `numbers` (number\[\]), `percentile` (number 0–100) |
+
+### Percentage tools — standard tier
+
+| Tool | Description | Arguments |
+|------|-------------|-----------|
+| `percentage_of` | X% of Y | `percent`, `total` (number) |
+| `percentage_change` | % change from A to B | `from`, `to` (number) |
+| `percentage_reverse` | X is Y% of what? | `value`, `percent` (number) |
+
+### Constants — standard tier
+
+| Tool | Description | Arguments |
+|------|-------------|-----------|
+| `get_constant` | Return a math, physics, or chemistry constant | `name` (string enum) |
+
+Accepted names: `pi`, `e`, `tau`, `phi`, `sqrt2`, `euler_mascheroni`, `c`, `g`, `G`, `h`, `k`, `R`, `NA`, `e_charge`, `m_e`, `m_p`.
+
+### Unit conversion — standard tier
+
+| Tool | Description | Arguments |
+|------|-------------|-----------|
+| `convert_unit` | 80+ conversions across 8 categories | `value` (number), `category`, `from`, `to` (string) |
+
+Categories: `length`, `weight`, `temperature`, `area`, `volume`, `time`, `speed`, `digital_storage`.
+
+### Memory — full tier
+
+| Tool | Description | Arguments |
+|------|-------------|-----------|
+| `memory_add` | Add a value to memory (M+) | `value` (number) |
+| `memory_subtract` | Subtract from memory (M−) | `value` (number) |
+| `memory_recall` | Return current memory value (MR) | *(none)* |
+| `memory_clear` | Reset memory to zero (MC) | *(none)* |
+
+### Batch, cache, and base conversion — full tier
+
+| Tool | Description | Arguments |
+|------|-------------|-----------|
+| `batch` | Execute up to 50 tool calls sequentially | `operations` (array of `{tool, arguments}`) |
+| `cache_clear` | Clear the result cache | *(none)* |
+| `cache_info` | Show cache statistics | *(none)* |
+| `convert_base` | Convert between bases 2, 8, 10, 16 | `value` (string), `from_base`, `to_base` |
+
+## Validation errors (JSON-RPC -32602)
+
+Cruncher validates every tool call against a JSON Schema before execution. If the schema check fails, it returns a JSON-RPC error with code `-32602` and a message that includes the exact property path that failed.
+
+Common causes:
+
+- **Wrong type** — passing a string where a number is required (e.g., `"5"` instead of `5`)
+- **Invalid enum value** — using `"deg"` instead of `"degrees"`, or `"speed_of_light"` instead of `"c"`
+- **Wrong shape** — passing `"1,2,3"` instead of `[1, 2, 3]` for an array argument
+
+```json
+{
+  "error": {
+    "code": -32602,
+    "message": "Validation Error: 'a' must be of type number, got string."
+  }
+}
+```
+
+<Warning>
+Always send numeric arguments as JSON numbers, not strings. Enum values must match exactly — Cruncher does not normalize casing for argument values.
+</Warning>
+
+## Fuzzy tool name matching
+
+If the AI client calls a tool name that does not exist, Cruncher uses Levenshtein distance plus prefix matching to suggest the closest valid tool instead of returning a generic error.
+
+| Typo called | Suggestion returned |
+|-------------|-------------------|
+| `fact` | `factorial` |
+| `sinn` | `sine` |
+| `squrt` | `sqrt` |
+| `adddd` | `add` |
+| `divid` | `divide` |
+| `totally_wrong` | *(no suggestion — too different)* |
+
+```json
+{
+  "error": {
+    "code": -32601,
+    "message": "Tool 'sinn' not found. Did you mean 'sine'?"
+  }
+}
+```
+
+## Navigate to category pages
+
+<CardGroup cols={2}>
+  <Card title="Arithmetic" icon="plus-minus" href="/tools/arithmetic">
+    `add`, `subtract`, `multiply`, `divide`, `modulo`, and `evaluate_expression` — the minimal tier tools available in every configuration.
+  </Card>
+  <Card title="Power, roots, and factorial" icon="superscript" href="/tools/power-roots">
+    `power`, `sqrt`, and `factorial` — exponentiation, square roots, and integer factorials with timeout protection.
+  </Card>
+  <Card title="Trigonometry" icon="wave-sine" href="/tools/trigonometry">
+    `sine`, `cosine`, `tangent`, `asin`, `acos`, `atan`, `set_angle_mode`, and `get_angle_mode` — full trig suite with degrees/radians support.
+  </Card>
+  <Card title="Logarithms" icon="chart-line" href="/tools/logarithms">
+    `logarithm`, `natural_log`, and `absolute` — base-10 log, natural log, and absolute value.
+  </Card>
+</CardGroup>

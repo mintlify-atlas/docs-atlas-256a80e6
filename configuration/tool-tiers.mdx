@@ -1,0 +1,146 @@
+---
+title: 'Cruncher tool tiers: minimal, standard, and full compared'
+description: "Compare Cruncher's minimal, standard, and full tiers to pick the one that balances token budget against the math capabilities your workflow needs."
+---
+
+Cruncher exposes its calculator functions in three tiers, each a strict superset of the previous one. The active tier is controlled by the `CRUNCHER_TOOL_SET` environment variable. Choosing the right tier lets you trade a smaller context window footprint for a narrower set of registered MCP tools — or open up the full suite when your workflow demands it.
+
+## Tier overview
+
+| Tier | Tools | Token budget | Best for |
+|------|-------|-------------|----------|
+| `minimal` | 5 | ~160 tokens | Lightweight agents, simple arithmetic |
+| `standard` | 34 | ~1,150 tokens | General-purpose AI assistant math (default) |
+| `full` | 43 | ~1,500 tokens | Power users, multi-step and memory workflows |
+
+<Note>
+  Even in `minimal` mode, `evaluate_expression` handles complex math including trigonometry, logarithms, and constants — individual tools like `sine` and `sqrt` simply are not registered as separate MCP tool calls. This can save up to 90% on context tokens compared to the `full` tier.
+</Note>
+
+## Minimal tier (5 tools)
+
+The minimal tier registers only the five core arithmetic tools. All complex math must go through `evaluate_expression`, which supports trig functions, logarithms, roots, and all named constants inline.
+
+| # | Tool | Description |
+|---|------|-------------|
+| 1 | `evaluate_expression` | Evaluate a plain-text math expression string |
+| 2 | `add` | Addition (a + b) |
+| 3 | `subtract` | Subtraction (a - b) |
+| 4 | `multiply` | Multiplication (a × b) |
+| 5 | `divide` | Division (a ÷ b) |
+
+**When to use minimal:** When token budget is the primary constraint, when the AI primarily uses `evaluate_expression` for everything, or when you are building a lightweight calculator agent that does not need typed statistical or unit-conversion tools.
+
+## Standard tier (34 tools — default)
+
+The standard tier includes all five minimal tools plus 29 additional tools covering trigonometry, statistics, percentages, logarithms, constants, and unit conversion. This is the default tier when `CRUNCHER_TOOL_SET` is not set.
+
+| # | Tool(s) | Category |
+|---|---------|----------|
+| 6 | `sqrt` | Square root |
+| 7 | `power` | Exponentiation (a^b) |
+| 8 | `absolute` | Absolute value |
+| 9 | `modulo` | Remainder (a mod b) |
+| 10 | `factorial` | Factorial (n!) |
+| 11 | `logarithm` | Base-10 logarithm |
+| 12 | `natural_log` | Natural logarithm (ln) |
+| 13 | `get_constant` | Fetch math, physics, or chemistry constants |
+| 14–16 | `sine`, `cosine`, `tangent` | Trigonometry |
+| 17–19 | `asin`, `acos`, `atan` | Inverse trigonometry |
+| 20 | `set_angle_mode` | Switch between degrees and radians globally |
+| 21 | `get_angle_mode` | Check the current angle mode |
+| 22–25 | `sum`, `avg`, `min`, `max` | Basic statistics |
+| 26 | `count` | Count elements in an array |
+| 27 | `variance` | Variance (sample or population) |
+| 28 | `std_dev` | Standard deviation (sample or population) |
+| 29 | `percentage_of` | X% of Y |
+| 30 | `percentage_change` | Percentage change from A to B |
+| 31 | `percentage_reverse` | X is Y% of what number? |
+| 32 | `median` | Median of an array |
+| 33 | `range` | Range (max − min) of an array |
+| 34 | `convert_unit` | 80+ unit conversions across 8 categories |
+
+**When to use standard:** For most AI assistant workflows — science homework, data analysis, financial math, and unit conversions. The ~1,150 token budget is a reasonable cost for the breadth of tools available.
+
+## Full tier (43 tools)
+
+The full tier adds nine more tools on top of the standard set: memory functions, batch execution, result caching, base conversion, and percentile calculation.
+
+| # | Tool | Category |
+|---|------|----------|
+| 35 | `percentile` | Value at the Nth percentile (0–100) |
+| 36 | `convert_base` | Convert between bases 2, 8, 10, and 16 |
+| 37 | `memory_add` | Add a value to calculator memory (M+) |
+| 38 | `memory_subtract` | Subtract a value from memory (M−) |
+| 39 | `memory_recall` | Read the current memory value (MR) |
+| 40 | `memory_clear` | Reset memory to zero (MC) |
+| 41 | `batch` | Run up to 50 tool calls in a single request |
+| 42 | `cache_clear` | Clear the result cache |
+| 43 | `cache_info` | Show cache hit/miss statistics |
+
+**When to use full:** When you need persistent memory across turns, multi-step batch calculations, base conversion (binary, octal, hex), or percentile analysis. Expect ~1,500 tokens of context overhead.
+
+## Configuring the tier
+
+Set `CRUNCHER_TOOL_SET` in the `env` block of your MCP server configuration. Restart the MCP client after changing the value.
+
+<CodeGroup>
+
+```json Minimal tier
+{
+  "mcpServers": {
+    "cruncher": {
+      "command": "npx",
+      "args": ["@slbdn/cruncher-mcp"],
+      "env": {
+        "CRUNCHER_TOOL_SET": "minimal"
+      }
+    }
+  }
+}
+```
+
+```json Standard tier (default)
+{
+  "mcpServers": {
+    "cruncher": {
+      "command": "npx",
+      "args": ["@slbdn/cruncher-mcp"],
+      "env": {
+        "CRUNCHER_TOOL_SET": "standard"
+      }
+    }
+  }
+}
+```
+
+```json Full tier
+{
+  "mcpServers": {
+    "cruncher": {
+      "command": "npx",
+      "args": ["@slbdn/cruncher-mcp"],
+      "env": {
+        "CRUNCHER_TOOL_SET": "full"
+      }
+    }
+  }
+}
+```
+
+</CodeGroup>
+
+<Tip>
+  If the AI client reports that a tool is not found (for example, `memory_recall` or `percentile`), the server is likely running in `standard` or `minimal` mode. Switch to `CRUNCHER_TOOL_SET=full` and restart your MCP client.
+</Tip>
+
+## Related
+
+<Columns cols={2}>
+  <Card title="Environment variables" icon="sliders" href="/configuration/environment-variables">
+    Full reference for `CRUNCHER_TOOL_SET` and `CRUNCHER_TIMEOUT`.
+  </Card>
+  <Card title="AI client setup" icon="plug" href="/configuration/ai-clients">
+    How to add these env vars when configuring each supported client.
+  </Card>
+</Columns>

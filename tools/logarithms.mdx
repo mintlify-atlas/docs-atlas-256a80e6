@@ -1,0 +1,264 @@
+---
+title: 'Logarithm and absolute value tools in Cruncher MCP server'
+description: 'Reference for logarithm, natural_log, and absolute — base-10 log, natural log, and absolute value with domain errors and expression-based alternatives.'
+keywords: ['cruncher', 'logarithm', 'natural log', 'absolute value', 'log10', 'ln', 'mcp', 'calculator']
+---
+
+Cruncher provides two logarithm tools and an absolute value tool, all part of the **standard tier**. They are available in every configuration except `minimal`. For arbitrary-base logarithms, use `evaluate_expression` with the built-in `log(x, base)` function — no separate tool is needed.
+
+## logarithm
+
+Calculates the base-10 (common) logarithm of a positive number.
+
+<ParamField body="value" type="number" required>
+  The number to take the logarithm of. Must be strictly greater than zero. Passing zero or a negative number returns a domain error.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  log₁₀(value) — the exponent to which 10 must be raised to produce `value`.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```json Power of ten
+{
+  "tool": "logarithm",
+  "arguments": { "value": 1000 }
+}
+```
+
+```json Non-integer result
+{
+  "tool": "logarithm",
+  "arguments": { "value": 50 }
+}
+```
+
+```json log(1)
+{
+  "tool": "logarithm",
+  "arguments": { "value": 1 }
+}
+```
+
+</CodeGroup>
+
+```json
+{ "result": 3 }
+{ "result": 1.6989700043360187 }
+{ "result": 0 }
+```
+
+### Domain errors
+
+```json
+{
+  "tool": "logarithm",
+  "arguments": { "value": 0 }
+}
+```
+
+```json
+{
+  "error": {
+    "code": -32000,
+    "message": "Check for: sqrt(negative), log(negative/zero), asin/acos out of [-1,1]"
+  }
+}
+```
+
+```json
+{
+  "tool": "logarithm",
+  "arguments": { "value": -5 }
+}
+```
+
+```json
+{
+  "error": {
+    "code": -32000,
+    "message": "Check for: sqrt(negative), log(negative/zero), asin/acos out of [-1,1]"
+  }
+}
+```
+
+<Warning>
+Both `log(0)` and `log(negative)` are mathematically undefined and return the same domain error. There is no distinction between the two in the error message — validate inputs client-side if you need to tell them apart.
+</Warning>
+
+---
+
+## natural_log
+
+Calculates the natural logarithm (base e) of a positive number.
+
+<ParamField body="value" type="number" required>
+  The number to take the natural log of. Must be strictly greater than zero.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  ln(value) — the exponent to which Euler's number e (≈ 2.71828) must be raised to produce `value`.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```json ln(e)
+{
+  "tool": "natural_log",
+  "arguments": { "value": 2.718281828459045 }
+}
+```
+
+```json ln(1)
+{
+  "tool": "natural_log",
+  "arguments": { "value": 1 }
+}
+```
+
+```json ln(100)
+{
+  "tool": "natural_log",
+  "arguments": { "value": 100 }
+}
+```
+
+</CodeGroup>
+
+```json
+{ "result": 1 }
+{ "result": 0 }
+{ "result": 4.605170185988092 }
+```
+
+<Tip>
+Inside `evaluate_expression`, you can use `ln(e)` directly with the named constant: `evaluate_expression("ln(e)")` returns `1`. This is often more readable than passing the numeric value of e.
+</Tip>
+
+### Domain error
+
+```json
+{
+  "tool": "natural_log",
+  "arguments": { "value": 0 }
+}
+```
+
+```json
+{
+  "error": {
+    "code": -32000,
+    "message": "Check for: sqrt(negative), log(negative/zero), asin/acos out of [-1,1]"
+  }
+}
+```
+
+---
+
+## absolute
+
+Returns the absolute value of a number — its magnitude without regard to sign.
+
+<ParamField body="value" type="number" required>
+  Any real number. Negative values are returned as positive; non-negative values are returned unchanged.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  |value| — the absolute value.
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```json Negative input
+{
+  "tool": "absolute",
+  "arguments": { "value": -42 }
+}
+```
+
+```json Positive input
+{
+  "tool": "absolute",
+  "arguments": { "value": 7.5 }
+}
+```
+
+```json Zero
+{
+  "tool": "absolute",
+  "arguments": { "value": 0 }
+}
+```
+
+</CodeGroup>
+
+```json
+{ "result": 42 }
+{ "result": 7.5 }
+{ "result": 0 }
+```
+
+`absolute` has no domain restrictions and never produces an error for valid numeric input.
+
+---
+
+## Arbitrary-base logarithms via evaluate_expression
+
+The `logarithm` and `natural_log` tools cover base 10 and base e. For any other base, use `evaluate_expression` with the built-in `log(x, base)` syntax:
+
+```json
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "log(8, 2)" }
+}
+```
+
+```json
+{ "result": 3 }
+```
+
+```json
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "log(243, 3)" }
+}
+```
+
+```json
+{ "result": 5 }
+```
+
+You can also chain this with other operations in a single expression:
+
+```json
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "log10(1000) ^ 2 + ln(e)" }
+}
+```
+
+```json
+{ "result": 10 }
+```
+
+<Note>
+Inside `evaluate_expression`, use `log10(x)` for base-10 and `ln(x)` for natural log — the function names differ from the standalone tool names (`logarithm` and `natural_log`). The standalone tools accept just a `value`; the expression functions are called inline with the value as an argument.
+</Note>
+
+---
+
+## Domain constraint summary
+
+| Tool | Valid input range | Error on |
+|------|------------------|----------|
+| `logarithm` | value > 0 | value ≤ 0 |
+| `natural_log` | value > 0 | value ≤ 0 |
+| `absolute` | any real number | never |
+| `log(x, base)` in expressions | x > 0, base > 0, base ≠ 1 | x ≤ 0 |

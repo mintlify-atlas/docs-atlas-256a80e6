@@ -1,0 +1,202 @@
+---
+title: 'Evaluating Math Expressions with Cruncher MCP Server'
+description: 'Use evaluate_expression to compute complex math in one call — operators, constants, trig, logarithms, and rounding functions. Always uses radians.'
+---
+
+Cruncher's `evaluate_expression` tool lets your AI assistant evaluate any plain-text mathematical expression in a single tool call. Instead of chaining `add`, `sqrt`, and `sine` calls separately, you pass one string and get one precise result. This page covers every operator, constant, and function the tool understands, shows real examples, and explains how domain errors are reported.
+
+## When to use `evaluate_expression`
+
+Use `evaluate_expression` when your calculation has two or more operations. Reserve the individual tools (`add`, `sine`, `sqrt`, etc.) for single-operation calls where you want the simplest possible invocation.
+
+| Scenario | Best tool |
+|----------|-----------|
+| `sin(pi/4) + sqrt(16)` | `evaluate_expression` |
+| `(1.5e6 * G) / r^2` | `evaluate_expression` |
+| Adding two numbers | `add` |
+| Square root of one number | `sqrt` |
+| Sine of one angle | `sine` |
+
+<Warning>
+  `evaluate_expression` always treats angle arguments as radians, regardless of the global angle mode set with `set_angle_mode`. If you need degrees, use the individual trig tools (`sine`, `cosine`, `tangent`) which respect the global mode and accept an explicit `unit` parameter.
+</Warning>
+
+## Supported syntax
+
+### Operators
+
+| Operator | Description | Example | Result |
+|----------|-------------|---------|--------|
+| `+` | Addition | `3 + 4` | `7` |
+| `-` | Subtraction | `10 - 3` | `7` |
+| `*` | Multiplication | `6 * 7` | `42` |
+| `/` | Division | `22 / 7` | `3.142857...` |
+| `%` | Modulo (remainder) | `17 % 5` | `2` |
+| `^` | Power (exponentiation) | `2 ^ 10` | `1024` |
+
+Parentheses control evaluation order in the standard way: `(2 + 3) * 4` evaluates to `20`.
+
+Scientific notation is supported directly in expressions: `1e6`, `2.5e-3`, `6.674e-11`.
+
+<Note>
+  Implicit multiplication is **not** supported. Write `2 * pi`, not `2pi`. The parser requires an explicit operator between every pair of operands.
+</Note>
+
+### Built-in functions
+
+| Function | Description | Example | Result |
+|----------|-------------|---------|--------|
+| `sin(x)` | Sine — x in radians | `sin(pi / 2)` | `1` |
+| `cos(x)` | Cosine — x in radians | `cos(pi)` | `-1` |
+| `tan(x)` | Tangent — x in radians | `tan(pi / 4)` | `~1` |
+| `asin(x)` | Arc-sine, result in radians | `asin(1)` | `~1.5708` |
+| `acos(x)` | Arc-cosine, result in radians | `acos(0)` | `~1.5708` |
+| `atan(x)` | Arc-tangent, result in radians | `atan(1)` | `~0.7854` |
+| `sqrt(x)` | Square root | `sqrt(144)` | `12` |
+| `log10(x)` | Base-10 logarithm | `log10(1000)` | `3` |
+| `ln(x)` | Natural logarithm (base e) | `ln(e)` | `1` |
+| `log(x, b)` | Logarithm with arbitrary base | `log(8, 2)` | `3` |
+| `abs(x)` | Absolute value | `abs(-5)` | `5` |
+| `round(x)` | Round to nearest integer | `round(3.7)` | `4` |
+| `floor(x)` | Round down | `floor(3.9)` | `3` |
+| `ceil(x)` | Round up | `ceil(3.1)` | `4` |
+| `min(a, b, ...)` | Minimum of two or more values | `min(3, 1, 4)` | `1` |
+| `max(a, b, ...)` | Maximum of two or more values | `max(3, 1, 4)` | `4` |
+
+### Constants
+
+You can use these constant names directly inside any expression string.
+
+| Constant | Description | Value |
+|----------|-------------|-------|
+| `pi` | π (circle ratio) | `3.14159265358979...` |
+| `e` | Euler's number | `2.71828182845904...` |
+| `tau` | τ = 2π | `6.28318530717958...` |
+| `phi` | Golden ratio (φ) | `1.61803398874989...` |
+| `sqrt2` | √2 | `1.41421356237309...` |
+| `euler_mascheroni` | Euler–Mascheroni constant (γ) | `0.57721566490153...` |
+| `c` | Speed of light (m/s) | `299792458` |
+| `g` | Standard gravity (m/s²) | `9.80665` |
+| `G` | Gravitational constant (m³/kg·s²) | `6.6743e-11` |
+| `h` | Planck constant (J·s) | `6.62607015e-34` |
+| `k` | Boltzmann constant (J/K) | `1.380649e-23` |
+| `R` | Ideal gas constant (J/mol·K) | `8.314462618` |
+| `NA` | Avogadro constant (1/mol) | `6.02214076e23` |
+| `e_charge` | Elementary charge (C) | `1.602176634e-19` |
+| `m_e` | Electron mass (kg) | `9.1093837015e-31` |
+| `m_p` | Proton mass (kg) | `1.67262192369e-27` |
+
+<Tip>
+  Constant names match longest-first. `euler_mascheroni` is never ambiguous with `e` — the parser correctly expands the full name before looking for shorter matches.
+</Tip>
+
+## Examples
+
+<CodeGroup>
+
+```text Simple arithmetic
+(5 + 3) * 10 / 2
+→ 40
+```
+
+```text Chained operations
+3^3 + abs(-5) / 2
+→ 29.5
+```
+
+```text With constants
+2 * pi * 5
+→ 31.41592653589793
+
+phi ^ 2
+→ 2.6180339887498953
+
+G * 1e11
+→ 6.6743
+```
+
+```text With trig functions
+sin(pi / 6) + sqrt(16)
+→ 4.5
+
+sin(pi / 4) + sqrt(16) + log10(100)
+→ 6.707106781186548
+```
+
+```text With logarithms
+log10(1000) ^ 2
+→ 9
+
+log(16, 2)
+→ 4
+
+ln(e)
+→ 1
+```
+
+```text Scientific notation
+1e6 + 2.5e-3
+→ 1000000.0025
+
+c * 2
+→ 599584916
+```
+
+```text Rounding functions
+round(3.7) + floor(3.9) + ceil(3.1)
+→ 11
+
+min(3, 1, 4, 1, 5) * max(2, 7, 1)
+→ 7
+```
+
+</CodeGroup>
+
+## Security model
+
+`evaluate_expression` does not use JavaScript's `eval()`. Instead, the expression string is checked against a strict regex whitelist that permits only numbers, operators, parentheses, and the specific constant and function names listed above. Any expression that contains characters outside this whitelist — variables, assignment operators, function definitions, or anything resembling code — is rejected before execution.
+
+<Note>
+  Algebraic variables are not supported. `x + 2`, `f(x)`, and similar expressions are invalid. Every value in an expression must be a number literal, a supported constant, or the output of a supported function.
+</Note>
+
+## Error handling
+
+### Domain errors
+
+Some inputs fall outside the mathematical domain of their function. Cruncher returns a descriptive error rather than `NaN` or `Infinity`.
+
+| Expression | Error message |
+|------------|---------------|
+| `sqrt(-1)` | Check for: `sqrt(negative)`, `log(negative/zero)`, `asin/acos out of [-1,1]` |
+| `asin(5)` | `asin/acos` out of `[-1, 1]` |
+| `acos(-2)` | `asin/acos` out of `[-1, 1]` |
+| `ln(0)` | Check for: `sqrt(negative)`, `log(negative/zero)`, `asin/acos out of [-1,1]` |
+| `1 / 0` | Check for division by zero or overflow |
+
+### Fuzzy tool name matching
+
+If your AI client calls a tool with a name that does not exist, Cruncher uses Levenshtein distance and prefix matching to find the closest registered tool and suggests it in the error response.
+
+| Called name | Suggestion |
+|-------------|------------|
+| `fact` | `factorial` |
+| `fac` | `factorial` |
+| `sinn` | `sine` |
+| `squrt` | `sqrt` |
+| `adddd` | `add` |
+| `divid` | `divide` |
+| `totally_wrong` | *(no suggestion — too different)* |
+
+The error response uses JSON-RPC error code `-32601`:
+
+```json
+{
+  "error": {
+    "code": -32601,
+    "message": "Tool 'fact' not found. Did you mean 'factorial'?"
+  }
+}
+```
+
+This allows LLMs that make typos or use slightly wrong tool names to recover gracefully without user intervention.

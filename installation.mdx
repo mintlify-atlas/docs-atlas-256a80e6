@@ -1,0 +1,179 @@
+---
+title: "Install Cruncher MCP: npx, npm, or single-file download"
+description: "Install Cruncher MCP via npx for automatic updates or download cruncher.js manually. Config file paths for Claude Desktop on Windows, macOS, and Linux."
+---
+
+Cruncher MCP runs as a subprocess of your AI client, communicating over `stdio`. This page covers both installation methods — `npx` (recommended) and manual file download — and shows the exact configuration for Claude Desktop on every supported platform.
+
+## Prerequisites
+
+Cruncher requires **Node.js 18.0.0 or newer**. Verify your version before proceeding:
+
+```bash
+node --version
+```
+
+Download the latest LTS release from [nodejs.org](https://nodejs.org/) if needed.
+
+## Installation methods
+
+<Tabs>
+  <Tab title="npx (recommended)">
+    The `npx` approach requires no installation step. Claude Desktop launches Cruncher by running `npx @slbdn/cruncher-mcp`, which downloads the latest version from npm automatically.
+
+    **Advantages:**
+    - Always runs the latest published version
+    - No file to manage or update manually
+    - Works identically on Windows, macOS, and Linux
+
+    Add the following to your Claude Desktop config file:
+
+    ```json claude_desktop_config.json
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "npx",
+          "args": ["@slbdn/cruncher-mcp"]
+        }
+      }
+    }
+    ```
+
+    To use a specific tool tier, add an `env` block:
+
+    ```json claude_desktop_config.json
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "npx",
+          "args": ["@slbdn/cruncher-mcp"],
+          "env": {
+            "CRUNCHER_TOOL_SET": "full"
+          }
+        }
+      }
+    }
+    ```
+
+    <Tip>
+      On the first launch, `npx` downloads and caches the package. Subsequent launches use the cache and start immediately. Run `npx clear-npx-cache` if you need to force a fresh download.
+    </Tip>
+  </Tab>
+
+  <Tab title="Manual file download">
+    You can download `cruncher.js` directly from the GitHub repository and run it with `node`. This gives you a fixed, offline-available version.
+
+    **Steps:**
+
+    1. Download [`cruncher.js`](https://github.com/islobodan/cruncher-mcp/blob/main/cruncher.js) from the repository.
+    2. Place it in a permanent location on your system. Suggested paths:
+       - **Windows**: `C:\mcp-servers\cruncher.js`
+       - **macOS/Linux**: `/home/YOUR_USERNAME/mcp-servers/cruncher.js`
+    3. Add the server to your Claude Desktop config, pointing to the file's absolute path.
+
+    <Warning>
+      Use an absolute path in the config. Relative paths will not work because Claude Desktop launches the server from an unpredictable working directory.
+    </Warning>
+
+    Example config for a manually downloaded file:
+
+    ```json claude_desktop_config.json (Windows)
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "node",
+          "args": ["C:/Users/YOUR_USERNAME/mcp-servers/cruncher.js"],
+          "env": {
+            "CRUNCHER_TOOL_SET": "standard"
+          }
+        }
+      }
+    }
+    ```
+
+    ```json claude_desktop_config.json (macOS / Linux)
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "node",
+          "args": ["/home/YOUR_USERNAME/mcp-servers/cruncher.js"],
+          "env": {
+            "CRUNCHER_TOOL_SET": "standard"
+          }
+        }
+      }
+    }
+    ```
+
+    <Note>
+      Make sure the `node` executable is on your system's `PATH`. On macOS and Linux, run `which node` to confirm. On Windows, run `where node`.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Claude Desktop config file locations
+
+Locate the configuration file for your operating system, then add or update the `mcpServers` block.
+
+<CodeGroup>
+
+```bash macOS
+~/Library/Application Support/Claude/claude_desktop_config.json
+```
+
+```bash Windows
+%APPDATA%\Claude\claude_desktop_config.json
+```
+
+```bash Linux
+~/.config/Claude/claude_desktop_config.json
+```
+
+</CodeGroup>
+
+If the file does not exist yet, create it with the following content:
+
+```json claude_desktop_config.json
+{
+  "mcpServers": {
+    "cruncher": {
+      "command": "npx",
+      "args": ["@slbdn/cruncher-mcp"]
+    }
+  }
+}
+```
+
+## Other AI clients
+
+Cruncher works with any MCP-compatible client. The configuration pattern is the same across all of them: specify `npx` (or `node`) as the command, pass `@slbdn/cruncher-mcp` (or the file path) as the argument, and optionally set environment variables for the tool tier and timeout.
+
+See the [AI client setup guide](/configuration/ai-clients) for step-by-step instructions for Cursor, Cline, OpenWebUI, Goose, Zed, LM Studio, and LibreChat.
+
+## Environment variables
+
+Two environment variables control Cruncher's behavior at runtime:
+
+| Variable | Default | Description |
+|---|---|---|
+| `CRUNCHER_TOOL_SET` | `standard` | Tool tier: `minimal` (5 tools), `standard` (34 tools), or `full` (43 tools) |
+| `CRUNCHER_TIMEOUT` | `3000` | Worker thread timeout in milliseconds. Range: 100–60000 |
+
+Set these in the `env` block of your MCP config:
+
+```json claude_desktop_config.json
+{
+  "mcpServers": {
+    "cruncher": {
+      "command": "npx",
+      "args": ["@slbdn/cruncher-mcp"],
+      "env": {
+        "CRUNCHER_TOOL_SET": "full",
+        "CRUNCHER_TIMEOUT": "5000"
+      }
+    }
+  }
+}
+```
+
+See [Tool tiers](/configuration/tool-tiers) for a full breakdown of which tools are available in each tier.

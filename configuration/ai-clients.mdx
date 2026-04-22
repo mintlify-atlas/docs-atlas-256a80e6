@@ -1,0 +1,331 @@
+---
+title: 'Connect Cruncher MCP to Claude, Cursor, Cline, and more'
+description: 'Configuration instructions for Cruncher MCP on Claude Desktop, OpenWebUI, Cursor, Cline, Goose, Zed, LM Studio, and LibreChat — npx and manual options.'
+---
+
+Cruncher runs as a `stdio` MCP server, which means any AI client that supports the Model Context Protocol can connect to it. This page covers configuration for every officially supported client. Each client section shows two options: Option A uses `npx` to run the latest published package automatically, and Option B uses a manually downloaded `cruncher.js` file for fully offline or version-pinned setups.
+
+<Tabs>
+  <Tab title="Claude Desktop">
+
+Claude Desktop reads its MCP server list from a JSON config file on disk.
+
+<Steps>
+  <Step title="Locate the config file">
+    Find `claude_desktop_config.json` at the path for your OS:
+
+    - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+    - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+  </Step>
+  <Step title="Add the Cruncher server entry">
+    Open the file in a text editor and add the configuration for your preferred option:
+
+    <CodeGroup>
+
+    ```json Option A: npx
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "npx",
+          "args": ["@slbdn/cruncher-mcp"]
+        }
+      }
+    }
+    ```
+
+    ```json Option B: manual file
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "node",
+          "args": ["C:/Users/YOUR_USERNAME/mcp-servers/cruncher.js"],
+          "env": {
+            "CRUNCHER_TOOL_SET": "standard"
+          }
+        }
+      }
+    }
+    ```
+
+    </CodeGroup>
+
+    <Note>
+      On macOS and Linux, use a POSIX-style path for the manual file option, for example `"/home/YOUR_USERNAME/mcp-servers/cruncher.js"`. Make sure `node` is in your system's PATH.
+    </Note>
+  </Step>
+  <Step title="Restart Claude Desktop">
+    Save the config file, then completely quit and relaunch Claude Desktop. It will connect to Cruncher automatically on startup.
+  </Step>
+</Steps>
+
+  </Tab>
+  <Tab title="OpenWebUI">
+
+OpenWebUI (formerly Ollama WebUI) has a built-in UI for managing MCP servers.
+
+<Steps>
+  <Step title="Open the MCP server settings">
+    Go to **Admin Panel** → **Settings** → **Tools** → **MCP Servers**.
+  </Step>
+  <Step title="Add a new server">
+    Click **Add Server** and fill in the fields for your preferred option:
+
+    <CodeGroup>
+
+    ```text Option A: npx
+    Name:    Cruncher
+    Type:    Command
+    Command: npx
+    Args:    @slbdn/cruncher-mcp
+    ```
+
+    ```text Option B: manual file
+    Name:    Cruncher
+    Type:    stdio
+    Command: node
+    Args:    /path/to/cruncher.js
+    ```
+
+    </CodeGroup>
+  </Step>
+  <Step title="Save and enable">
+    Save the server entry. OpenWebUI will start the Cruncher process when a session begins.
+  </Step>
+</Steps>
+
+  </Tab>
+  <Tab title="Cursor IDE">
+
+Cursor's built-in AI has a dedicated MCP server settings panel.
+
+<Steps>
+  <Step title="Open MCP server settings">
+    Go to **Cursor Settings** (gear icon) → **Features** → **MCP Servers**.
+  </Step>
+  <Step title="Add a new MCP server">
+    Click **+ Add New MCP Server** and fill in the fields for your preferred option:
+
+    <CodeGroup>
+
+    ```text Option A: npx
+    Type:    command
+    Name:    cruncher
+    Command: npx @slbdn/cruncher-mcp
+    ```
+
+    ```text Option B: manual file
+    Type:    command
+    Name:    cruncher
+    Command: node /path/to/cruncher.js
+    ```
+
+    </CodeGroup>
+  </Step>
+  <Step title="Save and verify">
+    Save the entry. Cursor will spawn the Cruncher process and list the available tools in the AI pane.
+  </Step>
+</Steps>
+
+  </Tab>
+  <Tab title="Cline">
+
+Cline is a VS Code extension for agentic coding. It reads MCP configuration from `cline_mcp_settings.json`.
+
+<Steps>
+  <Step title="Open cline_mcp_settings.json">
+    In VS Code, open the Cline extension settings and navigate to the MCP configuration file.
+  </Step>
+  <Step title="Add the Cruncher server entry">
+    Add one of the following blocks inside the `mcpServers` object:
+
+    <CodeGroup>
+
+    ```json Option A: npx
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "npx",
+          "args": ["@slbdn/cruncher-mcp"]
+        }
+      }
+    }
+    ```
+
+    ```json Option B: manual file
+    {
+      "mcpServers": {
+        "cruncher": {
+          "command": "node",
+          "args": ["/path/to/cruncher.js"],
+          "env": {
+            "CRUNCHER_TOOL_SET": "standard"
+          }
+        }
+      }
+    }
+    ```
+
+    </CodeGroup>
+  </Step>
+  <Step title="Save and reload">
+    Save the file. Cline picks up the new server entry without requiring a VS Code restart.
+  </Step>
+</Steps>
+
+  </Tab>
+  <Tab title="Goose">
+
+Goose is a terminal-based AI assistant that reads MCP configuration from a YAML file.
+
+<Steps>
+  <Step title="Open the Goose config file">
+    Edit `~/.goose/config.yaml`, or the local project config if you prefer project-scoped settings.
+  </Step>
+  <Step title="Add the Cruncher server entry">
+    Add one of the following blocks under `mcpServers`:
+
+    <CodeGroup>
+
+    ```yaml Option A: npx
+    mcpServers:
+      cruncher:
+        command: npx
+        args:
+          - "@slbdn/cruncher-mcp"
+    ```
+
+    ```yaml Option B: manual file
+    mcpServers:
+      cruncher:
+        command: node
+        args:
+          - "/path/to/cruncher.js"
+        env:
+          CRUNCHER_TOOL_SET: "standard"
+    ```
+
+    </CodeGroup>
+  </Step>
+  <Step title="Restart Goose">
+    Save the config file and restart Goose. You can now ask Goose to run tools like `evaluate_expression` or `median` directly.
+  </Step>
+</Steps>
+
+  </Tab>
+  <Tab title="Zed Editor">
+
+Zed's built-in AI pane supports MCP connections through its settings UI.
+
+<Steps>
+  <Step title="Open MCP server settings">
+    Go to **Settings** → **AI** → **MCP Servers**.
+  </Step>
+  <Step title="Add a new server">
+    Click **Add Server** and fill in the fields for your preferred option:
+
+    <CodeGroup>
+
+    ```text Option A: npx
+    Name:    cruncher
+    Command: npx
+    Args:    @slbdn/cruncher-mcp
+    ```
+
+    ```text Option B: manual file
+    Name:    cruncher
+    Command: node
+    Args:    /absolute/path/to/cruncher.js
+    Env:     CRUNCHER_TOOL_SET=standard
+    ```
+
+    </CodeGroup>
+  </Step>
+  <Step title="Save">
+    Save the entry. The Zed AI can now call Cruncher for precise arithmetic and statistics.
+  </Step>
+</Steps>
+
+  </Tab>
+  <Tab title="LM Studio">
+
+LM Studio runs LLMs locally and includes an MCP client for connecting external tool servers.
+
+<Steps>
+  <Step title="Open MCP settings">
+    Go to **Settings** → **MCP** in LM Studio.
+  </Step>
+  <Step title="Add a new server">
+    Click **Add Server** and fill in the fields for your preferred option:
+
+    <CodeGroup>
+
+    ```text Option A: npx
+    Executable: npx
+    Arguments:  @slbdn/cruncher-mcp
+    ```
+
+    ```text Option B: manual file
+    Executable:  node
+    Arguments:   /absolute/path/to/cruncher.js
+    Environment: CRUNCHER_TOOL_SET=standard
+    ```
+
+    </CodeGroup>
+  </Step>
+  <Step title="Confirm">
+    Confirm the entry. Your local model (such as Llama 3 or DeepSeek-V2) can now offload math to Cruncher without any network traffic.
+  </Step>
+</Steps>
+
+  </Tab>
+  <Tab title="LibreChat">
+
+LibreChat reads MCP server configuration from `librechat.yaml`.
+
+<Steps>
+  <Step title="Open librechat.yaml">
+    Locate and open your `librechat.yaml` configuration file.
+  </Step>
+  <Step title="Add the Cruncher server entry">
+    Add one of the following blocks to the MCP servers section of the file:
+
+    <CodeGroup>
+
+    ```yaml Option A: npx
+    cruncher:
+      type: stdio
+      command: npx
+      args:
+        - "@slbdn/cruncher-mcp"
+    ```
+
+    ```yaml Option B: manual file
+    cruncher:
+      type: stdio
+      command: node
+      args:
+        - "/opt/mcp/cruncher.js"
+      env:
+        CRUNCHER_TIMEOUT: "5000"
+    ```
+
+    </CodeGroup>
+  </Step>
+  <Step title="Restart LibreChat">
+    Save the file and restart LibreChat for the new MCP server entry to take effect.
+  </Step>
+</Steps>
+
+  </Tab>
+</Tabs>
+
+## Next steps
+
+<Columns cols={2}>
+  <Card title="Environment variables" icon="sliders" href="/configuration/environment-variables">
+    Set `CRUNCHER_TOOL_SET` and `CRUNCHER_TIMEOUT` to tune behavior after connecting.
+  </Card>
+  <Card title="Tool tiers" icon="layers" href="/configuration/tool-tiers">
+    Learn which tools each tier exposes and how to choose the right one for your workflow.
+  </Card>
+</Columns>

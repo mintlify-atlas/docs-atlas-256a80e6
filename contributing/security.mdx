@@ -1,0 +1,163 @@
+---
+title: "Cruncher MCP security model: expression and runtime safety"
+description: "How Cruncher prevents code injection and infinite loops via regex whitelisting, worker thread isolation, and custom JSON-Schema validation."
+keywords: ['security', 'expression evaluation', 'worker threads', 'schema validation', 'cruncher', 'mcp']
+---
+
+Cruncher MCP accepts math expressions and arbitrary tool arguments from AI clients, making security a foundational design concern rather than an afterthought. This page documents the multi-layer model that protects against code injection, resource exhaustion, and data races — as well as the known limitations you should understand before deploying in sensitive environments.
+
+## Expression evaluation security
+
+The `evaluate_expression` tool is the highest-risk surface: it accepts a free-form string and computes a result. Cruncher enforces six sequential layers before any code runs.
+
+| Layer | What it does |
+|-------|-------------|
+| **Input sanitization** | A strict regex whitelist permits only digits, the operators `+ - * / % ^`, parentheses, decimals, commas, spaces, and the exact names of approved functions and constants. Everything else is rejected immediately. |
+| **Function substitution** | Approved function names (`sin`, `cos`, `sqrt`, `log10`, `ln`, etc.) are converted to their `Math.*` equivalents via regex replacement. |
+| **Post-substitution check** | After function substitution, a second pass verifies no unapproved `Math.*` calls remain. This prevents payloads that smuggle dangerous method names through the substitution step. |
+| **Constant substitution** | Named constants (`pi`, `e`, `c`, `G`, etc.) are replaced with their numeric literals using longest-match-first matching, preventing partial substitution exploits. |
+| **Safe evaluation** | The sanitized expression is evaluated with `new Function("return (...)")` — only after passing all checks above. No raw `eval()` is used anywhere in the codebase. |
+| **Domain protection** | Results that are `NaN` or `Infinity` are caught and returned as descriptive error messages rather than raw values. |
+
+### Allowed expression inputs
+
+```javascript
+// Valid — numbers, approved operators, approved functions
+"2 * pi * 5"
+"sin(pi / 6) + sqrt(16)"
+"log10(1000) ^ 2"
+"log(16, 2)"
+"abs(-42) + round(3.7)"
+"1e6 + 2.5e-3"
+"G * 1e11"
+```
+
+### Blocked expression inputs
+
+<Warning>
+  The following input patterns are rejected by the whitelist before any execution occurs.
+</Warning>
+
+```javascript
+// Rejected — variables and identifiers
+"x + 2"
+"myVar * 3"
+
+// Rejected — property access
+"obj.key"
+"Math.random()"       // blocked before Math.* check
+
+// Rejected — dangerous globals
+"eval('1+1')"
+"process.env"
+"require('fs')"
+"global.something"
+"this.constructor"
+"window.location"
+
+// Rejected — language constructs
+"`template literal`"
+"...spread"
+"function() {}"
+```
+
+<Note>
+  `evaluate_expression` always uses radians for trigonometric functions, regardless of the global angle mode set via `set_angle_mode`. The global angle mode only affects individual tool calls like `sine` and `cosine`.
+</Note>
+
+## Input validation (JSON Schema)
+
+Every tool call — not just expression evaluation — is validated against a strict JSON Schema definition before the handler runs. Cruncher implements this with a **custom recursive validator** written in plain Node.js; no third-party library like Zod is involved.
+
+The validator enforces:
+
+- **Type correctness** — `number` parameters must be JSON numbers, not strings. Sending `"5"` where `5` is expected returns a `-32602 Validation Error`.
+- **Enum enforcement** — Only enumerated values are accepted. `"deg"` is rejected; `"degrees"` is required.
+- **Recursive validation** — Nested objects and arrays are validated depth-first, so schema violations inside array elements are caught and reported with exact property paths.
+- **Structured errors** — Failures return a `-32602` error with the full parameter path, making it easy for an AI client to identify which argument was wrong.
+
+## Worker thread isolation
+
+Computationally heavy tools run in isolated Node.js `worker_threads`, not on the main thread. This provides several guarantees:
+
+- **Timeout protection** — A configurable timeout (default: 3 seconds, controlled by `CRUNCHER_TIMEOUT`) watches each worker. If the worker exceeds the limit, the main thread calls `worker.terminate()` and returns a `-32000 Execution Timeout` error.
+- **Forceful termination** — Workers are killed, not asked to stop. A runaway loop cannot outlast its timeout budget.
+- **Memory isolation** — Workers receive a snapshot of main-thread state (such as the current memory register value), not a live reference. This prevents a worker from corrupting shared state.
+- **Result verification** — Worker results are validated before being forwarded to the client.
+
+The following tools run in worker threads because they can be computationally expensive with large inputs: `evaluate_expression`, `factorial`, `median`, `percentile`, `sum`, `avg`, `range`, `divide`, `modulo`, trig tools (due to unit-conversion overhead), and `convert_base`.
+
+## Cache security
+
+The LRU result cache is designed to be non-exploitable:
+
+- Cache keys are deterministic, derived from the sorted tool arguments and tool name — not from user-controlled strings.
+- Only approved, stateless tools are cached. Stateful tools (`memory_*`, `batch`, `cache_clear`, `cache_info`) are marked `NON_CACHEABLE` and bypass the cache entirely.
+- The cache is capped at 1000 entries with LRU eviction, preventing memory exhaustion from cache-flooding attacks.
+
+## Tiered tool exposure
+
+The `CRUNCHER_TOOL_SET` environment variable limits the attack surface by restricting which tools are registered at startup:
+
+| Tier | Tools | Description |
+|------|-------|-------------|
+| `minimal` | 5 | Core arithmetic and `evaluate_expression` only |
+| `standard` | 34 | Adds trig, stats, percentages, constants, and unit conversion |
+| `full` | 43 | Adds memory, base conversion, percentiles, batch, and cache tools |
+
+<Tip>
+  Use `minimal` or `standard` unless your deployment specifically requires the advanced tools in `full`. A smaller tool set reduces the MCP context token budget and limits the available commands an AI client can invoke.
+</Tip>
+
+## Threat model
+
+### What Cruncher protects against
+
+| Threat | Protection mechanism |
+|--------|---------------------|
+| **Code injection via expressions** | Regex whitelist rejects all non-math input; `Math.*` substitution is verified before execution |
+| **Prototype pollution** | Custom schema validator blocks inputs that are not the expected primitive type |
+| **ReDoS (regex denial of service)** | No user-controlled regex patterns — all patterns are pre-compiled constants |
+| **Infinite loops / long-running calculations** | Worker thread timeout kills execution after the configured limit (default 3 seconds) |
+| **Memory exhaustion via cache flooding** | LRU cache capped at 1000 entries with automatic eviction |
+| **Concurrent data races on memory state** | An atomic memory queue serializes all state modifications |
+
+### What Cruncher does not protect against
+
+<Warning>
+  Understand these limitations before exposing Cruncher to untrusted clients.
+</Warning>
+
+| Scenario | Notes |
+|----------|-------|
+| **Massively expensive single expressions** | An expression like `9^999999999999` overflows to `Infinity` and is caught by domain protection, but the JavaScript engine may take a moment to reach that conclusion. |
+| **Hostile MCP clients** | The server trusts the MCP client connection. It does not authenticate callers or encrypt the stdio channel. |
+
+## Deployment best practices
+
+1. **Set `CRUNCHER_TIMEOUT`** to an appropriate value in milliseconds. The default is `3000`. For latency-sensitive environments, lower it; for workloads with legitimately large datasets, raise it (maximum `60000`).
+2. **Use `minimal` or `standard` tier** unless you need full-tier features. This reduces the exposed tool surface.
+3. **Do not pass raw user input directly to `evaluate_expression`**. For user-provided numeric values, use the typed tools (`add`, `multiply`, `sqrt`, etc.) which only accept validated number arguments.
+4. **Run in a container or restricted environment** if the stdio connection is reachable by untrusted clients. Cruncher does not authenticate connections.
+
+## Reporting a vulnerability
+
+Cruncher follows a responsible disclosure policy.
+
+<Warning>
+  Do not open a public GitHub issue for security vulnerabilities. Public disclosure before a fix is available puts all users at risk.
+</Warning>
+
+To report a vulnerability:
+
+1. **Do not open a public issue.** Opening a public issue exposes the vulnerability before a fix exists.
+2. **Contact the maintainer privately.** Open a private GitHub security advisory or reach out to the maintainer directly.
+3. **Include a proof of concept** if possible — a minimal input that demonstrates the issue.
+4. **Response time**: The maintainer acknowledges vulnerabilities within 48 hours.
+
+### Supported versions
+
+| Version | Security fixes |
+|---------|---------------|
+| 1.2.x | Supported |
+| < 1.2.0 | Not supported |

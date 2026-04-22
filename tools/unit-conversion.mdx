@@ -1,0 +1,255 @@
+---
+title: "convert_unit in Cruncher MCP: 80+ units across 8 categories"
+description: "Reference for convert_unit in Cruncher MCP: 8 categories, 80+ units, response format, and examples including temperature non-linear conversions."
+---
+
+Cruncher's `convert_unit` tool converts between 80+ units across 8 categories — length, weight, temperature, area, volume, time, speed, and digital storage. It is available in the standard tier (the default). All unit identifiers are case-insensitive, so `"KM"`, `"Km"`, and `"km"` are all accepted.
+
+<Tip>
+  Always use `convert_unit` rather than asking your AI to calculate the conversion factor manually. AI models frequently hallucinate conversion ratios, especially for uncommon units.
+</Tip>
+
+---
+
+## convert_unit
+
+<ParamField body="value" type="number" required>
+  The numeric quantity to convert.
+</ParamField>
+
+<ParamField body="category" type="string" required>
+  The unit category. Must be one of: `length`, `weight`, `temperature`, `area`, `volume`, `time`, `speed`, `digital_storage`.
+</ParamField>
+
+<ParamField body="from" type="string" required>
+  The source unit identifier (e.g., `"mi"`, `"kg"`, `"c"`). Case-insensitive. See the unit tables below for all valid identifiers.
+</ParamField>
+
+<ParamField body="to" type="string" required>
+  The target unit identifier. Must be in the same category as `from`.
+</ParamField>
+
+### Response format
+
+<ResponseField name="value" type="number">
+  The original input value.
+</ResponseField>
+
+<ResponseField name="from" type="string">
+  The source unit identifier.
+</ResponseField>
+
+<ResponseField name="to" type="string">
+  The target unit identifier.
+</ResponseField>
+
+<ResponseField name="result" type="number">
+  The converted value in the target unit.
+</ResponseField>
+
+<ResponseField name="category" type="string">
+  The unit category (echoes back the `category` argument).
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```json length: miles to km
+{
+  "tool": "convert_unit",
+  "arguments": { "value": 5, "category": "length", "from": "mi", "to": "km" }
+}
+```
+
+```json temperature: Celsius to Fahrenheit
+{
+  "tool": "convert_unit",
+  "arguments": { "value": 100, "category": "temperature", "from": "c", "to": "f" }
+}
+```
+
+```json weight: pounds to kilograms
+{
+  "tool": "convert_unit",
+  "arguments": { "value": 180, "category": "weight", "from": "lb", "to": "kg" }
+}
+```
+
+```json digital storage: GB to MB
+{
+  "tool": "convert_unit",
+  "arguments": { "value": 2.5, "category": "digital_storage", "from": "GB", "to": "MB" }
+}
+```
+
+```json speed: mph to km/h
+{
+  "tool": "convert_unit",
+  "arguments": { "value": 60, "category": "speed", "from": "mph", "to": "km/h" }
+}
+```
+
+</CodeGroup>
+
+---
+
+## Supported units by category
+
+<AccordionGroup>
+
+  <Accordion title="length">
+
+| Identifier | Unit |
+|------------|------|
+| `m` | Meter |
+| `km` | Kilometer |
+| `cm` | Centimeter |
+| `mm` | Millimeter |
+| `um` | Micrometer |
+| `nm` | Nanometer |
+| `in` | Inch |
+| `ft` | Foot |
+| `yd` | Yard |
+| `mi` | Mile |
+| `nmi` | Nautical mile |
+
+  </Accordion>
+
+  <Accordion title="weight">
+
+| Identifier | Unit |
+|------------|------|
+| `kg` | Kilogram |
+| `g` | Gram |
+| `mg` | Milligram |
+| `ug` | Microgram |
+| `lb` | Pound |
+| `oz` | Ounce |
+| `st` | Stone |
+| `t` | Metric ton |
+
+  </Accordion>
+
+  <Accordion title="temperature">
+
+| Identifier | Unit |
+|------------|------|
+| `c` | Celsius |
+| `f` | Fahrenheit |
+| `k` | Kelvin |
+
+<Warning>
+  Temperature conversions are **non-linear** and use the proper formulas — not simple multiplication by a constant factor:
+
+  - **°C → °F:** `(°C × 9/5) + 32`
+  - **°F → °C:** `(°F − 32) × 5/9`
+  - **°C → K:** `°C + 273.15`
+  - **K → °C:** `K − 273.15`
+
+  Never calculate temperature conversions manually or with a linear factor. Always use `convert_unit`.
+</Warning>
+
+  </Accordion>
+
+  <Accordion title="area">
+
+| Identifier | Unit |
+|------------|------|
+| `m2` | Square meter |
+| `km2` | Square kilometer |
+| `cm2` | Square centimeter |
+| `ft2` | Square foot |
+| `in2` | Square inch |
+| `yd2` | Square yard |
+| `mi2` | Square mile |
+| `ac` | Acre |
+| `ha` | Hectare |
+
+  </Accordion>
+
+  <Accordion title="volume">
+
+| Identifier | Unit |
+|------------|------|
+| `L` | Liter |
+| `mL` | Milliliter |
+| `m3` | Cubic meter |
+| `cm3` | Cubic centimeter |
+| `gal` | US gallon |
+| `qt` | Quart |
+| `pt` | Pint |
+| `cup` | Cup |
+| `floz` | Fluid ounce |
+| `tbsp` | Tablespoon |
+| `tsp` | Teaspoon |
+| `imp_gal` | Imperial gallon |
+
+  </Accordion>
+
+  <Accordion title="time">
+
+| Identifier | Unit |
+|------------|------|
+| `s` | Second |
+| `ms` | Millisecond |
+| `us` | Microsecond |
+| `ns` | Nanosecond |
+| `min` | Minute |
+| `hr` | Hour |
+| `day` | Day |
+| `week` | Week |
+| `month` | Month (30 days) |
+| `year` | Year (365 days) |
+
+  </Accordion>
+
+  <Accordion title="speed">
+
+| Identifier | Unit |
+|------------|------|
+| `m/s` | Meters per second |
+| `km/h` | Kilometers per hour |
+| `mph` | Miles per hour |
+| `kn` | Knot |
+| `ft/s` | Feet per second |
+| `mach` | Mach (speed of sound) |
+| `c` | Speed of light |
+
+  </Accordion>
+
+  <Accordion title="digital_storage">
+
+| Identifier | Unit |
+|------------|------|
+| `B` | Byte |
+| `KB` | Kilobyte |
+| `MB` | Megabyte |
+| `GB` | Gigabyte |
+| `TB` | Terabyte |
+| `PB` | Petabyte |
+| `b` | Bit |
+| `Kb` | Kilobit |
+| `Mb` | Megabit |
+| `Gb` | Gigabit |
+
+  </Accordion>
+
+</AccordionGroup>
+
+---
+
+## Notes
+
+**Case-insensitivity:** Unit identifiers are matched case-insensitively. `"KM"`, `"Km"`, and `"km"` all resolve to kilometer. The only exception is `digital_storage`, where byte (`B`) and bit (`b`) differ by case — in that category, the original case is preserved for disambiguation.
+
+**Temperature:** Always use `convert_unit` for temperature. It applies the correct non-linear formulas. A linear scaling factor will give wrong results for Celsius ↔ Fahrenheit and Kelvin conversions.
+
+<CardGroup cols={2}>
+  <Card title="Statistics" icon="chart-bar" href="/tools/statistics">
+    Sum, average, median, variance, and more
+  </Card>
+  <Card title="Constants" icon="atom" href="/tools/constants">
+    Physical and mathematical constants
+  </Card>
+</CardGroup>

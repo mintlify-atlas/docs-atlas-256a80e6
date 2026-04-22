@@ -1,0 +1,366 @@
+---
+title: 'Trigonometry tools in Cruncher MCP: sine, cosine, and more'
+description: 'Reference for sine, cosine, tangent, asin, acos, atan, and angle mode tools — covering degrees vs radians, domain constraints, and global mode behavior.'
+keywords: ['cruncher', 'trigonometry', 'sine', 'cosine', 'tangent', 'asin', 'acos', 'atan', 'degrees', 'radians', 'mcp']
+---
+
+Cruncher provides six trigonometric functions plus two tools for managing the global angle mode. All eight are part of the **standard tier** and are available in any configuration other than `minimal`. Every individual tool call can override the global mode via an optional `unit` parameter — and `evaluate_expression` always uses radians regardless of the global setting.
+
+## Angle mode: global vs per-call
+
+Cruncher maintains a server-side **global angle mode** that defaults to `"degrees"`. The individual trig tools (`sine`, `cosine`, etc.) read this mode when no `unit` argument is supplied.
+
+| Scenario | Angle mode used |
+|----------|----------------|
+| `sine` called without `unit` | Global mode (default: degrees) |
+| `sine` called with `unit: "radians"` | Radians — overrides global mode |
+| `evaluate_expression` with `sin(x)` | Always radians — global mode has no effect |
+
+<Note>
+If you are mixing `evaluate_expression` with individual trig tools in the same session, be careful: the expression evaluator always treats angles as radians, while the standalone tools default to degrees. To work in radians consistently, either call `set_angle_mode` or always pass `unit: "radians"` explicitly.
+</Note>
+
+---
+
+## sine
+
+Returns the sine of an angle.
+
+<ParamField body="angle" type="number" required>
+  The angle value. Interpreted according to the `unit` parameter or the global angle mode if `unit` is omitted.
+</ParamField>
+
+<ParamField body="unit" type="string">
+  `"degrees"` or `"radians"`. Overrides the global angle mode for this call only. Defaults to the current global mode (initially `"degrees"`).
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The sine of the angle, in the range \[−1, 1\].
+</ResponseField>
+
+<CodeGroup>
+
+```json Degrees (default)
+{
+  "tool": "sine",
+  "arguments": { "angle": 90 }
+}
+```
+
+```json Explicit degrees
+{
+  "tool": "sine",
+  "arguments": { "angle": 30, "unit": "degrees" }
+}
+```
+
+```json Radians
+{
+  "tool": "sine",
+  "arguments": { "angle": 1.5707963267948966, "unit": "radians" }
+}
+```
+
+</CodeGroup>
+
+```json
+{ "result": 1 }
+{ "result": 0.5 }
+{ "result": 1 }
+```
+
+---
+
+## cosine
+
+Returns the cosine of an angle.
+
+<ParamField body="angle" type="number" required>
+  The angle value. Interpreted according to `unit` or the global angle mode.
+</ParamField>
+
+<ParamField body="unit" type="string">
+  `"degrees"` or `"radians"`. Overrides the global angle mode for this call only.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The cosine of the angle, in the range \[−1, 1\].
+</ResponseField>
+
+<CodeGroup>
+
+```json Degrees
+{
+  "tool": "cosine",
+  "arguments": { "angle": 60, "unit": "degrees" }
+}
+```
+
+```json Radians
+{
+  "tool": "cosine",
+  "arguments": { "angle": 3.141592653589793, "unit": "radians" }
+}
+```
+
+</CodeGroup>
+
+```json
+{ "result": 0.5 }
+{ "result": -1 }
+```
+
+---
+
+## tangent
+
+Returns the tangent of an angle.
+
+<ParamField body="angle" type="number" required>
+  The angle value. Interpreted according to `unit` or the global angle mode.
+</ParamField>
+
+<ParamField body="unit" type="string">
+  `"degrees"` or `"radians"`. Overrides the global angle mode for this call only.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The tangent of the angle.
+</ResponseField>
+
+<Warning>
+Tangent is undefined at 90°, 270°, and their radian equivalents (π/2, 3π/2, ...). Passing these values produces a very large number due to floating-point limits — not a domain error — so validate inputs if you need precise boundary handling.
+</Warning>
+
+<CodeGroup>
+
+```json Degrees
+{
+  "tool": "tangent",
+  "arguments": { "angle": 45, "unit": "degrees" }
+}
+```
+
+```json Radians
+{
+  "tool": "tangent",
+  "arguments": { "angle": 0.7853981633974483, "unit": "radians" }
+}
+```
+
+</CodeGroup>
+
+```json
+{ "result": 1 }
+{ "result": 1 }
+```
+
+---
+
+## asin
+
+Returns the arcsine (inverse sine) of a value. The result is an angle.
+
+<ParamField body="value" type="number" required>
+  The sine value to invert. **Must be in the range \[−1, 1\].** Values outside this range cause a domain error.
+</ParamField>
+
+<ParamField body="unit" type="string">
+  `"degrees"` or `"radians"`. Controls the unit of the returned angle. Defaults to the current global mode.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The angle whose sine is `value`, in the range \[−90°, 90°\] when using degrees or \[−π/2, π/2\] when using radians.
+</ResponseField>
+
+<CodeGroup>
+
+```json Result in degrees
+{
+  "tool": "asin",
+  "arguments": { "value": 0.5, "unit": "degrees" }
+}
+```
+
+```json Result in radians
+{
+  "tool": "asin",
+  "arguments": { "value": 1, "unit": "radians" }
+}
+```
+
+</CodeGroup>
+
+```json
+{ "result": 30 }
+{ "result": 1.5707963267948966 }
+```
+
+### Domain error
+
+```json
+{
+  "tool": "asin",
+  "arguments": { "value": 5 }
+}
+```
+
+```json
+{
+  "error": {
+    "code": -32000,
+    "message": "asin/acos out of [-1,1]"
+  }
+}
+```
+
+---
+
+## acos
+
+Returns the arccosine (inverse cosine) of a value. The result is an angle.
+
+<ParamField body="value" type="number" required>
+  The cosine value to invert. **Must be in the range \[−1, 1\].** Values outside this range cause a domain error.
+</ParamField>
+
+<ParamField body="unit" type="string">
+  `"degrees"` or `"radians"`. Controls the unit of the returned angle. Defaults to the current global mode.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The angle whose cosine is `value`, in the range \[0°, 180°\] when using degrees or \[0, π\] when using radians.
+</ResponseField>
+
+<CodeGroup>
+
+```json Result in degrees
+{
+  "tool": "acos",
+  "arguments": { "value": 0, "unit": "degrees" }
+}
+```
+
+```json Result in radians
+{
+  "tool": "acos",
+  "arguments": { "value": -1, "unit": "radians" }
+}
+```
+
+</CodeGroup>
+
+```json
+{ "result": 90 }
+{ "result": 3.141592653589793 }
+```
+
+<Warning>
+Both `asin` and `acos` require input in \[−1, 1\]. A value of `1.0001` or `-1.0001` will return a domain error. This is a mathematical constraint, not a Cruncher limitation.
+</Warning>
+
+---
+
+## atan
+
+Returns the arctangent (inverse tangent) of a value. The result is an angle.
+
+<ParamField body="value" type="number" required>
+  The tangent value to invert. Accepts any real number — there is no domain restriction.
+</ParamField>
+
+<ParamField body="unit" type="string">
+  `"degrees"` or `"radians"`. Controls the unit of the returned angle. Defaults to the current global mode.
+</ParamField>
+
+<ResponseField name="result" type="number">
+  The angle whose tangent is `value`, in the range (−90°, 90°) when using degrees or (−π/2, π/2) when using radians.
+</ResponseField>
+
+<CodeGroup>
+
+```json Result in degrees
+{
+  "tool": "atan",
+  "arguments": { "value": 1, "unit": "degrees" }
+}
+```
+
+```json Result in radians
+{
+  "tool": "atan",
+  "arguments": { "value": 1, "unit": "radians" }
+}
+```
+
+</CodeGroup>
+
+```json
+{ "result": 45 }
+{ "result": 0.7853981633974483 }
+```
+
+---
+
+## set_angle_mode
+
+Sets the global angle mode used by all subsequent trig tool calls that do not supply an explicit `unit` argument.
+
+<ParamField body="mode" type="string" required>
+  The angle unit to activate globally. Must be exactly `"degrees"` or `"radians"`.
+</ParamField>
+
+<ResponseField name="result" type="string">
+  Confirmation message indicating the new mode.
+</ResponseField>
+
+```json
+{
+  "tool": "set_angle_mode",
+  "arguments": { "mode": "radians" }
+}
+```
+
+```json
+{ "result": "Angle mode set to radians." }
+```
+
+<Note>
+The global angle mode persists for the lifetime of the Cruncher process. It resets to `"degrees"` each time the server restarts. If your client makes calls across multiple sessions, always set the mode explicitly at the start of each session rather than relying on the previous state.
+</Note>
+
+---
+
+## get_angle_mode
+
+Returns the current global angle mode without changing it.
+
+No arguments required.
+
+<ResponseField name="result" type="string">
+  Either `"degrees"` or `"radians"`.
+</ResponseField>
+
+```json
+{
+  "tool": "get_angle_mode",
+  "arguments": {}
+}
+```
+
+```json
+{ "result": "degrees" }
+```
+
+---
+
+## Degrees vs radians quick reference
+
+| Degrees | Radians | sin | cos | tan |
+|---------|---------|-----|-----|-----|
+| 0° | 0 | 0 | 1 | 0 |
+| 30° | π/6 ≈ 0.5236 | 0.5 | ~0.866 | ~0.577 |
+| 45° | π/4 ≈ 0.7854 | ~0.707 | ~0.707 | 1 |
+| 60° | π/3 ≈ 1.0472 | ~0.866 | 0.5 | ~1.732 |
+| 90° | π/2 ≈ 1.5708 | 1 | 0 | ∞ |
+| 180° | π ≈ 3.1416 | 0 | −1 | 0 |

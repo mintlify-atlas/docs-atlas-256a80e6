@@ -1,0 +1,119 @@
+---
+title: 'Memory calculator functions in Cruncher MCP: M+, M-, MR, MC'
+description: 'Persist a running numerical total across tool calls using M+, M-, MR, and MC operations. Memory is maintained for the lifetime of the server session.'
+---
+
+Cruncher's memory tools give you a persistent running total that survives across individual tool calls within a session, mirroring the memory register found on a physical calculator. Use these tools to accumulate intermediate results, apply corrections, and retrieve the stored value on demand without recomputing from scratch.
+
+<Note>
+  Memory tools are available in the **full tier** only. Set `CRUNCHER_TOOL_SET=full` in your MCP server configuration to enable them.
+</Note>
+
+## How memory works
+
+The memory register starts at `0` each time the Cruncher server process starts. From that point forward, `memory_add` and `memory_subtract` adjust the register, `memory_recall` reads it, and `memory_clear` resets it back to `0`. The value persists across as many tool calls as you make during the session.
+
+**Persistence scope:** Memory is maintained for the lifetime of the server process. Restarting the server (or running `npx @slbdn/cruncher-mcp` again) resets memory to `0`.
+
+**Atomic operations:** All four memory tools run through an internal promise queue. Concurrent calls are serialized automatically, so parallel requests from the same client cannot produce race conditions or corrupt the stored value.
+
+## Tools
+
+### memory_add
+
+Adds `value` to the current memory register (equivalent to the **M+** key on a physical calculator).
+
+<ParamField body="value" type="number" required>
+  The number to add to the current memory total. Accepts any finite number, including decimals and negative values.
+</ParamField>
+
+### memory_subtract
+
+Subtracts `value` from the current memory register (equivalent to **M-**).
+
+<ParamField body="value" type="number" required>
+  The number to subtract from the current memory total. Accepts any finite number, including decimals and negative values.
+</ParamField>
+
+### memory_recall
+
+Returns the current value stored in the memory register (equivalent to **MR**). Takes no arguments.
+
+### memory_clear
+
+Resets the memory register to `0` (equivalent to **MC**). Takes no arguments.
+
+## Complete workflow example
+
+The following example stores a subtotal, applies a correction, recalls the result, and then clears memory when finished.
+
+<CodeGroup>
+
+```json Step 1 — seed memory with an initial value
+{
+  "tool": "memory_add",
+  "arguments": {
+    "value": 99
+  }
+}
+```
+
+```json Step 2 — add another amount
+{
+  "tool": "memory_add",
+  "arguments": {
+    "value": 5
+  }
+}
+```
+
+```json Step 3 — recall the running total
+{
+  "tool": "memory_recall",
+  "arguments": {}
+}
+```
+
+```json Step 4 — subtract a correction
+{
+  "tool": "memory_subtract",
+  "arguments": {
+    "value": 15
+  }
+}
+```
+
+```json Step 5 — recall the corrected total
+{
+  "tool": "memory_recall",
+  "arguments": {}
+}
+```
+
+```json Step 6 — clear memory when done
+{
+  "tool": "memory_clear",
+  "arguments": {}
+}
+```
+
+</CodeGroup>
+
+After step 3, `memory_recall` returns `104` (99 + 5). After step 4, subtracting 15 leaves `89`. Step 5 returns `89`. Step 6 resets the register to `0`.
+
+## Behavior reference
+
+| Tool | Calculator key | Arguments | Effect |
+|---|---|---|---|
+| `memory_add` | M+ | `value` (number) | Adds value to register |
+| `memory_subtract` | M- | `value` (number) | Subtracts value from register |
+| `memory_recall` | MR | none | Returns current register value |
+| `memory_clear` | MC | none | Resets register to 0 |
+
+<Warning>
+  Memory is not persisted to disk. Restarting the Cruncher server process resets the register to `0`. If you need results across sessions, store them in your application layer.
+</Warning>
+
+<Tip>
+  Memory tools work naturally inside a `batch` call. You can seed memory, perform several operations, and recall the result all in one request. See the [Batch & Cache](/tools/batch-cache) page for details.
+</Tip>

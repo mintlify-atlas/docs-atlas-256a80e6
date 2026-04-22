@@ -1,0 +1,181 @@
+---
+title: "get_constant: math and physics constants in Cruncher MCP"
+description: "Reference for all 16 constants available via get_constant in Cruncher MCP — mathematical, physics, and chemistry constants with exact values and usage examples."
+---
+
+Cruncher provides 16 named constants through the `get_constant` tool, spanning mathematics, physics, and chemistry. The tool is available in the standard tier (the default). Constants can also be used directly inside `evaluate_expression` strings, which lets you combine them with arithmetic, trigonometry, and other operations in a single call.
+
+---
+
+## get_constant
+
+Returns the exact numeric value of the named constant.
+
+<ParamField body="name" type="string" required>
+  The constant identifier. Must be one of the 16 names listed below:
+
+  `"pi"`, `"e"`, `"tau"`, `"phi"`, `"sqrt2"`, `"euler_mascheroni"`, `"c"`, `"g"`, `"G"`, `"h"`, `"k"`, `"R"`, `"NA"`, `"e_charge"`, `"m_e"`, `"m_p"`
+</ParamField>
+
+### Examples
+
+<CodeGroup>
+
+```json pi
+{
+  "tool": "get_constant",
+  "arguments": { "name": "pi" }
+}
+```
+
+```json speed of light
+{
+  "tool": "get_constant",
+  "arguments": { "name": "c" }
+}
+```
+
+```json Avogadro's number
+{
+  "tool": "get_constant",
+  "arguments": { "name": "NA" }
+}
+```
+
+```json golden ratio
+{
+  "tool": "get_constant",
+  "arguments": { "name": "phi" }
+}
+```
+
+</CodeGroup>
+
+---
+
+## Mathematical constants
+
+| Name | Description | Exact value |
+|------|-------------|-------------|
+| `pi` | π — ratio of a circle's circumference to its diameter | 3.14159265358979... |
+| `e` | Euler's number — base of the natural logarithm | 2.71828182845904... |
+| `tau` | τ = 2π — full turn in radians | 6.28318530717958... |
+| `phi` | φ — golden ratio, (1 + √5) / 2 | 1.61803398874989... |
+| `sqrt2` | √2 — square root of two | 1.41421356237309... |
+| `euler_mascheroni` | γ — Euler-Mascheroni constant | 0.57721566490153... |
+
+---
+
+## Physics constants
+
+| Name | Description | Value | Unit |
+|------|-------------|-------|------|
+| `c` | Speed of light in vacuum | 299792458 | m/s |
+| `g` | Standard gravity (acceleration due to gravity at sea level) | 9.80665 | m/s² |
+| `G` | Newtonian gravitational constant | 6.6743×10⁻¹¹ | m³ kg⁻¹ s⁻² |
+| `h` | Planck constant | 6.62607015×10⁻³⁴ | J·s |
+| `k` | Boltzmann constant | 1.380649×10⁻²³ | J/K |
+| `R` | Ideal gas constant | 8.314462618 | J/(mol·K) |
+
+---
+
+## Chemistry constants
+
+| Name | Description | Value | Unit |
+|------|-------------|-------|------|
+| `NA` | Avogadro constant — number of particles per mole | 6.02214076×10²³ | mol⁻¹ |
+| `e_charge` | Elementary charge — charge of one proton | 1.602176634×10⁻¹⁹ | C |
+| `m_e` | Electron rest mass | 9.1093837015×10⁻³¹ | kg |
+| `m_p` | Proton rest mass | 1.67262192369×10⁻²⁷ | kg |
+
+---
+
+## Using constants in evaluate_expression
+
+All 16 constant names are recognized inside `evaluate_expression` strings. This lets you perform multi-step calculations in a single tool call without first looking up a constant's value.
+
+```json circumference of a circle with radius 5
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "2 * pi * 5" }
+}
+```
+
+**Result:** `31.41592653589793`
+
+<CodeGroup>
+
+```json energy using E = mc²
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "1 * c ^ 2" }
+}
+```
+
+```json golden ratio squared
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "phi ^ 2" }
+}
+```
+
+```json gravitational constant scaled
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "G * 1e11" }
+}
+```
+
+```json √2 times itself
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "sqrt2 * sqrt2" }
+}
+```
+
+```json e squared
+{
+  "tool": "evaluate_expression",
+  "arguments": { "expression": "e * e" }
+}
+```
+
+</CodeGroup>
+
+<Note>
+  Use explicit multiplication: `2 * pi` is valid, but `2pi` is not. Cruncher does not support implicit multiplication. Constants and scientific notation coexist safely — `1e6` and `e * 2` both work correctly without ambiguity.
+</Note>
+
+---
+
+## Constant name reference
+
+All names are lowercase (except `G`, `R`, and `NA` which are uppercase to match their conventional scientific notation).
+
+| Identifier | Conventional symbol |
+|------------|---------------------|
+| `pi` | π |
+| `e` | e |
+| `tau` | τ |
+| `phi` | φ |
+| `sqrt2` | √2 |
+| `euler_mascheroni` | γ |
+| `c` | c |
+| `g` | g |
+| `G` | G |
+| `h` | h |
+| `k` | k_B |
+| `R` | R |
+| `NA` | N_A |
+| `e_charge` | e |
+| `m_e` | m_e |
+| `m_p` | m_p |
+
+<CardGroup cols={2}>
+  <Card title="Statistics" icon="chart-bar" href="/tools/statistics">
+    Sum, average, median, variance, and standard deviation
+  </Card>
+  <Card title="Unit conversion" icon="arrows-left-right" href="/tools/unit-conversion">
+    Convert between 80+ units across 8 categories
+  </Card>
+</CardGroup>

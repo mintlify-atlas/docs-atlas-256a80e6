@@ -1,0 +1,144 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "Cruncher MCP",
+  "projectDescription": "A zero-dependency scientific calculator MCP server with 43 tools across 8 categories, featuring strict validation, worker isolation, and accurate decimal math.",
+  "theme": "luma",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/environment-variables",
+              "configuration/tool-tiers",
+              "configuration/ai-clients"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/expression-evaluation",
+              "guides/unit-conversion",
+              "guides/statistics",
+              "guides/advanced-usage"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "contributing/overview",
+              "contributing/security"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Tool Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "tools/overview"
+            ]
+          },
+          {
+            "group": "Arithmetic & Math",
+            "pages": [
+              "tools/arithmetic",
+              "tools/power-roots",
+              "tools/trigonometry",
+              "tools/logarithms"
+            ]
+          },
+          {
+            "group": "Data & Analysis",
+            "pages": [
+              "tools/statistics",
+              "tools/percentages",
+              "tools/unit-conversion",
+              "tools/constants"
+            ]
+          },
+          {
+            "group": "Advanced Tools",
+            "pages": [
+              "tools/memory",
+              "tools/batch-cache",
+              "tools/base-conversion"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Zero external dependencies — pure Node.js standard library",
+    "43 MCP tools across 8 categories (arithmetic, trig, stats, percentages, unit conversion, constants, memory, batch)",
+    "Three tiered tool sets (minimal/standard/full) to optimize context token usage",
+    "Safe expression evaluation with strict regex whitelist (no eval())",
+    "Worker thread isolation with configurable 3-second timeout for heavy computations",
+    "Accurate floating-point math via integer-scaling (0.1 + 0.2 === 0.3)",
+    "80+ unit conversions across 8 categories",
+    "16 mathematical and physical constants",
+    "Fuzzy tool name matching with Levenshtein distance correction",
+    "LRU result caching with 5-minute TTL"
+  ],
+  "publicApiSurface": [
+    "evaluate_expression(expression: string)",
+    "add(a: number, b: number)",
+    "subtract(a: number, b: number)",
+    "multiply(a: number, b: number)",
+    "divide(a: number, b: number)",
+    "modulo(a: number, b: number)",
+    "power(base: number, exponent: number)",
+    "sqrt(value: number)",
+    "factorial(n: number)",
+    "sine(angle: number, unit?: string)",
+    "cosine(angle: number, unit?: string)",
+    "tangent(angle: number, unit?: string)",
+    "asin(value: number, unit?: string)",
+    "acos(value: number, unit?: string)",
+    "atan(value: number, unit?: string)",
+    "logarithm(value: number)",
+    "natural_log(value: number)",
+    "absolute(value: number)",
+    "get_constant(name: string)",
+    "sum(numbers: number[])",
+    "avg(numbers: number[])",
+    "median(numbers: number[])",
+    "min(numbers: number[])",
+    "max(numbers: number[])",
+    "count(numbers: number[])",
+    "range(numbers: number[])",
+    "variance(numbers: number[], population?: boolean)",
+    "std_dev(numbers: number[], population?: boolean)",
+    "percentile(numbers: number[], percentile: number)",
+    "percentage_of(percent: number, total: number)",
+    "percentage_change(from: number, to: number)",
+    "percentage_reverse(value: number, percent: number)",
+    "convert_unit(value: number, category: string, from: string, to: string)",
+    "convert_base(value: string, from_base: number, to_base: number)",
+    "set_angle_mode(unit: string)",
+    "get_angle_mode()",
+    "memory_add(value: number)",
+    "memory_subtract(value: number)",
+    "memory_recall()",
+    "memory_clear()",
+    "batch(operations: Array<{tool: string, args: object}>)",
+    "cache_clear()",
+    "cache_info()"
+  ]
+}

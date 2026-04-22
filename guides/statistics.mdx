@@ -1,0 +1,234 @@
+---
+title: 'Statistical Analysis of Number Arrays in Cruncher MCP'
+description: 'Cruncher provides 10 stats tools for number arrays — sum, avg, median, variance, std_dev, and percentile — with sample and population calculation modes.'
+---
+
+Cruncher includes a complete set of statistical tools for analyzing arrays of numbers. All core statistics tools are available in the standard tier (the default). The `percentile` tool requires the full tier. This page covers every statistics tool, explains the sample versus population distinction for variance and standard deviation, and shows how to combine multiple tools for a thorough data analysis.
+
+## Tool overview
+
+| Tool | Description | Tier |
+|------|-------------|------|
+| `sum` | Total of all values | standard |
+| `avg` | Arithmetic mean | standard |
+| `median` | Middle value when sorted | standard |
+| `min` | Smallest value | standard |
+| `max` | Largest value | standard |
+| `count` | Number of elements | standard |
+| `range` | Difference between max and min | standard |
+| `variance` | Average squared deviation | standard |
+| `std_dev` | Square root of variance | standard |
+| `percentile` | Value at a given percentile (0–100) | **full** |
+
+All tools accept a `numbers` argument: a JSON array of numeric values.
+
+## Basic statistics
+
+### `sum`
+
+Returns the total of all values in the array.
+
+```json
+{ "tool": "sum", "arguments": { "numbers": [10, 20, 30, 40, 50] } }
+→ 150
+```
+
+### `avg`
+
+Returns the arithmetic mean.
+
+```json
+{ "tool": "avg", "arguments": { "numbers": [10, 20, 30, 40, 50] } }
+→ 30
+```
+
+### `median`
+
+Returns the middle value of the sorted array. For an even-length array, returns the mean of the two middle values.
+
+```json
+{ "tool": "median", "arguments": { "numbers": [15, 22, 8, 41, 19, 30] } }
+→ 20.5
+```
+
+### `min` and `max`
+
+Return the smallest and largest values respectively.
+
+```json
+{ "tool": "min", "arguments": { "numbers": [5, 3, 9, 1, 7] } }
+→ 1
+
+{ "tool": "max", "arguments": { "numbers": [5, 3, 9, 1, 7] } }
+→ 9
+```
+
+### `count`
+
+Returns the number of elements in the array.
+
+```json
+{ "tool": "count", "arguments": { "numbers": [10, 20, 30] } }
+→ 3
+```
+
+### `range`
+
+Returns `max - min`.
+
+```json
+{ "tool": "range", "arguments": { "numbers": [3, 7, 2, 9, 1] } }
+→ 8
+```
+
+## Variance and standard deviation
+
+Both `variance` and `std_dev` accept an optional `population` boolean parameter that controls which formula is used.
+
+| Mode | Parameter | Divisor | Use when |
+|------|-----------|---------|----------|
+| Sample (default) | `"population": false` | n − 1 | Your array is a sample drawn from a larger population |
+| Population | `"population": true` | n | Your array represents the entire population |
+
+When `population` is omitted, sample mode is used.
+
+<CodeGroup>
+
+```json Sample variance (default)
+{
+  "tool": "variance",
+  "arguments": {
+    "numbers": [85, 92, 78, 90, 88],
+    "population": false
+  }
+}
+→ 28.3
+```
+
+```json Population variance
+{
+  "tool": "variance",
+  "arguments": {
+    "numbers": [85, 92, 78, 90, 88],
+    "population": true
+  }
+}
+→ 22.64
+```
+
+</CodeGroup>
+
+<CodeGroup>
+
+```json Sample standard deviation
+{
+  "tool": "std_dev",
+  "arguments": {
+    "numbers": [10, 12, 8, 14, 6],
+    "population": false
+  }
+}
+→ 3.1622776601683795
+```
+
+```json Population standard deviation
+{
+  "tool": "std_dev",
+  "arguments": {
+    "numbers": [10, 12, 8, 14, 6],
+    "population": true
+  }
+}
+→ 2.8284271247461903
+```
+
+</CodeGroup>
+
+<Tip>
+  Use sample mode (`population: false`) when you have survey data, test scores, or any measurements from a subset. Use population mode (`population: true`) when you have the complete dataset — for example, the final grades for all students in a class.
+</Tip>
+
+## Percentile
+
+The `percentile` tool returns the value at a given percentile rank (0–100) using linear interpolation.
+
+<Note>
+  `percentile` is only available in the **full** tier. Set `CRUNCHER_TOOL_SET=full` in your MCP configuration to enable it. See [environment variables](/configuration/environment-variables) for how to set this.
+</Note>
+
+```json
+{
+  "tool": "percentile",
+  "arguments": {
+    "numbers": [10, 20, 30, 40, 50],
+    "percentile": 75
+  }
+}
+→ 40
+```
+
+```json
+{
+  "tool": "percentile",
+  "arguments": {
+    "numbers": [23, 45, 12, 67, 89, 34, 56, 78, 90, 11],
+    "percentile": 95
+  }
+}
+→ 89.55
+```
+
+## Combining tools for data analysis
+
+For a thorough descriptive summary of a dataset, call multiple statistics tools with the same array. Because Cruncher caches results by input (in the full tier), repeated calls with the same array have zero additional cost after the first hit.
+
+Here is a complete analysis of the dataset `[15, 22, 8, 41, 19, 30, 25, 12]`:
+
+<Steps>
+  <Step title="Count and sum">
+    Establish the size and total.
+
+    ```json
+    { "tool": "count", "arguments": { "numbers": [15, 22, 8, 41, 19, 30, 25, 12] } }
+    → 8
+
+    { "tool": "sum", "arguments": { "numbers": [15, 22, 8, 41, 19, 30, 25, 12] } }
+    → 172
+    ```
+  </Step>
+  <Step title="Central tendency">
+    Find the average and median.
+
+    ```json
+    { "tool": "avg", "arguments": { "numbers": [15, 22, 8, 41, 19, 30, 25, 12] } }
+    → 21.5
+
+    { "tool": "median", "arguments": { "numbers": [15, 22, 8, 41, 19, 30, 25, 12] } }
+    → 20.5
+    ```
+  </Step>
+  <Step title="Spread">
+    Measure the range and standard deviation.
+
+    ```json
+    { "tool": "range", "arguments": { "numbers": [15, 22, 8, 41, 19, 30, 25, 12] } }
+    → 33
+
+    { "tool": "std_dev", "arguments": { "numbers": [15, 22, 8, 41, 19, 30, 25, 12], "population": false } }
+    → 10.297087...
+    ```
+  </Step>
+  <Step title="Extremes">
+    Identify the minimum and maximum.
+
+    ```json
+    { "tool": "min", "arguments": { "numbers": [15, 22, 8, 41, 19, 30, 25, 12] } }
+    → 8
+
+    { "tool": "max", "arguments": { "numbers": [15, 22, 8, 41, 19, 30, 25, 12] } }
+    → 41
+    ```
+  </Step>
+</Steps>
+
+If you have the full tier enabled, you can also use `batch` to send all of these in a single request. See [batch processing](/guides/advanced-usage#batch-processing) for details.

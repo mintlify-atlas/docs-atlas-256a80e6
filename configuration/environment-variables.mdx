@@ -1,0 +1,114 @@
+---
+title: 'Cruncher MCP environment variable configuration reference'
+description: 'Control which tools Cruncher exposes and how long calculations are allowed to run by setting two environment variables in your MCP config.'
+---
+
+Cruncher reads two environment variables at startup to configure its behavior: one that controls which tools are registered with the AI client, and one that sets the maximum time a calculation may run before it is terminated. Both variables are set in the `env` block of your MCP server configuration.
+
+## Environment variables
+
+<ParamField path="env.CRUNCHER_TOOL_SET" type="string" default="standard">
+  Controls which tier of tools Cruncher registers with the MCP client. Accepts one of three values.
+
+  | Value | Tools exposed | Token budget |
+  |-------|--------------|--------------|
+  | `minimal` | 5 | ~160 tokens |
+  | `standard` | 34 | ~1,150 tokens |
+  | `full` | 43 | ~1,500 tokens |
+
+  See [Tool tiers](/configuration/tool-tiers) for a full breakdown of which tools each tier includes.
+</ParamField>
+
+<ParamField path="env.CRUNCHER_TIMEOUT" type="number" default="3000">
+  Maximum time in milliseconds that a worker thread is allowed to run before the main thread forcefully terminates it. If a calculation exceeds this limit, Cruncher returns a `-32000` error to the client.
+
+  - Minimum: `100` ms
+  - Maximum: `60000` ms (60 seconds)
+  - Default: `3000` ms (3 seconds)
+
+  Raise this value if you regularly run heavy computations such as large factorials. Do not raise it arbitrarily — a tight timeout keeps the server responsive.
+</ParamField>
+
+## Setting variables in your MCP config
+
+Both variables are passed through the `env` object inside your MCP server entry. The exact file location depends on the client you are using; the structure is the same for any client that uses JSON config.
+
+<CodeGroup>
+
+```json npx (recommended)
+{
+  "mcpServers": {
+    "cruncher": {
+      "command": "npx",
+      "args": ["@slbdn/cruncher-mcp"],
+      "env": {
+        "CRUNCHER_TOOL_SET": "standard",
+        "CRUNCHER_TIMEOUT": "3000"
+      }
+    }
+  }
+}
+```
+
+```json node (manual file)
+{
+  "mcpServers": {
+    "cruncher": {
+      "command": "node",
+      "args": ["/path/to/cruncher.js"],
+      "env": {
+        "CRUNCHER_TOOL_SET": "standard",
+        "CRUNCHER_TIMEOUT": "3000"
+      }
+    }
+  }
+}
+```
+
+</CodeGroup>
+
+<Note>
+  You do not need to set both variables at the same time. Omitting either one leaves it at its default value (`standard` and `3000` respectively).
+</Note>
+
+## Example: minimal tier with extended timeout
+
+Use this configuration when you want to minimize context token usage but need extra time for complex `evaluate_expression` calls.
+
+```json
+{
+  "mcpServers": {
+    "cruncher": {
+      "command": "npx",
+      "args": ["@slbdn/cruncher-mcp"],
+      "env": {
+        "CRUNCHER_TOOL_SET": "minimal",
+        "CRUNCHER_TIMEOUT": "10000"
+      }
+    }
+  }
+}
+```
+
+## Example: full tier for power users
+
+Use this configuration to unlock memory functions, batch processing, base conversion, and percentile calculations.
+
+```json
+{
+  "mcpServers": {
+    "cruncher": {
+      "command": "npx",
+      "args": ["@slbdn/cruncher-mcp"],
+      "env": {
+        "CRUNCHER_TOOL_SET": "full",
+        "CRUNCHER_TIMEOUT": "5000"
+      }
+    }
+  }
+}
+```
+
+<Warning>
+  If a calculation times out, Cruncher returns a `-32000 Execution Timeout` error. Do not retry the same call automatically — instead, increase `CRUNCHER_TIMEOUT` in your config and restart the MCP server.
+</Warning>
